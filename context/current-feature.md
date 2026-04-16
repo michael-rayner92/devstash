@@ -17,3 +17,5 @@
 ## History
 
 <!-- Keep this updated. Earliest to latest -->
+
+- **2026-04-16** — Initial Next.js + Tailwind CSS setup bootstrapped from `create-next-app`. Removed default placeholder assets, updated `globals.css` and `page.tsx`, added project context files and CLAUDE.md. Pushed to `https://github.com/michael-rayner92/devstash.git`.
