@@ -339,6 +339,14 @@ model Tag {
 - Syntax highlighting for codeblocks
 - **References:** Notion, Linear, Raycast
 
+### Screenshots
+
+Refer to the screenshots below as a base for the dashboard and item page UIs. It does not have to be exact. Use it as a reference.
+
+- @context/screenshots/dashboard-ui-main.png
+- @context/screenshots/ui-drawer.png
+- @context/screenshots/ui-item-page.png
+
 ### Layout
 
 - **Sidebar + main content** (collapsible sidebar)
