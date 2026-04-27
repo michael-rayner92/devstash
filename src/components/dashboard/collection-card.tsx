@@ -1,9 +1,6 @@
 import Link from "next/link"
 import { Star, Code2, Sparkles, Terminal, StickyNote, Link as LinkIcon, File, Image as ImageIcon } from "lucide-react"
-import { mockCollections, mockItemTypes } from "@/lib/mock-data"
-
-type Collection = (typeof mockCollections)[number]
-type ItemType = (typeof mockItemTypes)[number]
+import type { CollectionWithStats } from "@/lib/db/collections"
 
 const iconMap: Record<string, React.ElementType> = {
   Code: Code2,
@@ -24,14 +21,16 @@ function relativeTime(date: Date): string {
   return `${Math.floor(seconds / 604800)}w ago`
 }
 
-export function CollectionCard({ collection, type }: { collection: Collection; type: ItemType }) {
-  const Icon = iconMap[type.icon] ?? File
-  const color = type.color
+export function CollectionCard({ collection }: { collection: CollectionWithStats }) {
+  const { dominantType, allTypes } = collection
+  const color = dominantType?.color ?? "#6b7280"
+  const DominantIcon = dominantType ? (iconMap[dominantType.icon] ?? File) : File
+  const secondaryTypes = allTypes.filter((t) => t.id !== dominantType?.id)
 
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="group flex flex-col rounded-xl border border-border overflow-hidden hover:border-[var(--type-color)] transition-colors"
+      className="group flex flex-col rounded-xl border border-border overflow-hidden hover:border-(--type-color) transition-colors"
       style={{ "--type-color": color } as React.CSSProperties}
     >
       <div className="h-0.5 w-full" style={{ backgroundColor: color }} />
@@ -41,17 +40,23 @@ export function CollectionCard({ collection, type }: { collection: Collection; t
       >
         <div className="mb-3 flex items-start justify-between">
           <div className="rounded-lg p-2" style={{ backgroundColor: `${color}20` }}>
-            <Icon className="h-5 w-5" style={{ color }} />
+            <DominantIcon className="h-5 w-5" style={{ color }} />
           </div>
-          {collection.isFavorite && (
-            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          )}
+          <div className="flex items-center gap-1.5">
+            {secondaryTypes.length > 0 && (
+              <div className="flex items-center gap-0.5">
+                {secondaryTypes.map((t) => {
+                  const Icon = iconMap[t.icon] ?? File
+                  return <Icon key={t.id} className="h-3.5 w-3.5 opacity-60" style={{ color: t.color }} />
+                })}
+              </div>
+            )}
+            {collection.isFavorite && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+          </div>
         </div>
 
         <h3 className="font-semibold text-foreground leading-snug">{collection.name}</h3>
-        <p className="mt-1 text-sm text-muted-foreground line-clamp-2 flex-1">
-          {collection.description}
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground line-clamp-2 flex-1">{collection.description}</p>
 
         <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />

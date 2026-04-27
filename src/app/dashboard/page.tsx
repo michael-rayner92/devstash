@@ -1,20 +1,27 @@
 import Link from "next/link"
-import { mockUser, mockItemTypes, mockCollections, mockItems, mockStats } from "@/lib/mock-data"
+import { mockUser, mockItemTypes, mockItems } from "@/lib/mock-data"
 import { CollectionCard } from "@/components/dashboard/collection-card"
 import { ItemRow } from "@/components/dashboard/item-row"
+import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
+import { prisma } from "@/lib/prisma"
 
 const typeMap = Object.fromEntries(mockItemTypes.map((t) => [t.id, t]))
 
-const recentCollections = [...mockCollections].sort(
-  (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-)
-
 const pinnedItems = mockItems.filter((i) => i.isPinned)
-
 const recentItems = mockItems.slice(0, 10)
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   const firstName = mockUser.name?.split(" ")[0] ?? "there"
+
+  // Temporary: use demo user until auth is wired up
+  const demoUser = await prisma.user.findUnique({ where: { email: "demo@devstash.io" } })
+
+  const [collections, stats] = demoUser
+    ? await Promise.all([
+        getRecentCollections(demoUser.id, 6),
+        getDashboardStats(demoUser.id),
+      ])
+    : [[], { totalItems: 0, totalCollections: 0, totalFavorites: 0 }]
 
   return (
     <div className="p-6 space-y-8 max-w-screen-2xl">
@@ -31,17 +38,17 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Items stashed"
-          value={mockStats.totalItems}
-          sub={`${mockStats.itemsLimit} on free plan`}
+          value={stats.totalItems}
+          sub="50 on free plan"
         />
         <StatsCard
           title="Collections"
-          value={mockStats.totalCollections}
-          sub={`${mockStats.collectionsLimit} on free plan`}
+          value={stats.totalCollections}
+          sub="3 on free plan"
         />
         <StatsCard
           title="Favorites"
-          value={mockStats.totalFavorites}
+          value={stats.totalFavorites}
           sub="across all types"
         />
         <StatsCard
@@ -57,7 +64,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-base font-semibold">Collections</h2>
             <p className="text-xs text-muted-foreground">
-              {mockStats.totalCollections} total &middot; grouped by dominant type
+              {stats.totalCollections} total &middot; grouped by dominant type
             </p>
           </div>
           <Link
@@ -68,10 +75,9 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {recentCollections.map((col) => {
-            const type = typeMap[col.dominantTypeId]
-            return <CollectionCard key={col.id} collection={col} type={type} />
-          })}
+          {collections.map((col) => (
+            <CollectionCard key={col.id} collection={col} />
+          ))}
         </div>
       </section>
 
