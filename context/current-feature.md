@@ -2,6 +2,8 @@
 
 ## Status
 
+Complete
+
 ## Goals
 
 ## Notes
@@ -15,4 +17,5 @@
 - **2026-04-20** — Dashboard UI Phase 2 completed. Collapsible sidebar (desktop toggle via `PanelLeft` button, smooth width transition), item type links to `/items/[type]s`, favorites and recent collections sections, user avatar area with initials/tier badge, mobile-always-drawer via Radix Dialog-based `Sheet` component. `DashboardShell` client component wraps all dashboard routes via `layout.tsx`.
 - **2026-04-20** — Dashboard UI Phase 3 completed. Main content area with greeting, 4 stats cards (items, collections, favorites, AI credits), recent collections grid with type-colored gradient cards, pinned items section, and recent items list. `CollectionCard` and `ItemRow` components created. Gradient effect added to collection cards matching reference screenshot.
 - **2026-04-27** — Prisma 7 + Neon PostgreSQL setup completed. Schema with all models + NextAuth, initial migration applied, system ItemTypes seeded. `ws` required for Node.js WebSocket support with Neon serverless driver.
+- **2026-04-27** — Dashboard collections wired to real DB. Created `src/lib/db/collections.ts` with `getRecentCollections` (dominant type + all types computed per collection) and `getDashboardStats`. Updated `CollectionCard` to accept real DB types and show secondary type icons. Dashboard page is now async, fetches demo user by email, and renders live stats and collections from Neon.
 - **2026-04-27** — Demo seed data completed. `prisma/seed.ts` updated with demo user (`demo@devstash.io`), 7 system item types upserted, and 5 collections seeded (React Patterns, AI Workflows, DevOps, Terminal Commands, Design Resources) with 18 items total. `scripts/test-db.ts` updated to verify all seeded data.
