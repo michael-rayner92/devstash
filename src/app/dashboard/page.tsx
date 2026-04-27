@@ -1,27 +1,24 @@
 import Link from "next/link"
-import { mockUser, mockItemTypes, mockItems } from "@/lib/mock-data"
 import { CollectionCard } from "@/components/dashboard/collection-card"
 import { ItemRow } from "@/components/dashboard/item-row"
 import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
+import { getPinnedItems, getRecentItems } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
 
-const typeMap = Object.fromEntries(mockItemTypes.map((t) => [t.id, t]))
-
-const pinnedItems = mockItems.filter((i) => i.isPinned)
-const recentItems = mockItems.slice(0, 10)
-
 export default async function DashboardPage() {
-  const firstName = mockUser.name?.split(" ")[0] ?? "there"
-
   // Temporary: use demo user until auth is wired up
   const demoUser = await prisma.user.findUnique({ where: { email: "demo@devstash.io" } })
 
-  const [collections, stats] = demoUser
+  const [collections, stats, pinnedItems, recentItems] = demoUser
     ? await Promise.all([
         getRecentCollections(demoUser.id, 6),
         getDashboardStats(demoUser.id),
+        getPinnedItems(demoUser.id),
+        getRecentItems(demoUser.id, 10),
       ])
-    : [[], { totalItems: 0, totalCollections: 0, totalFavorites: 0 }]
+    : [[], { totalItems: 0, totalCollections: 0, totalFavorites: 0 }, [], []]
+
+  const firstName = demoUser?.name?.split(" ")[0] ?? "there"
 
   return (
     <div className="p-6 space-y-8 max-w-screen-2xl">
@@ -53,8 +50,8 @@ export default async function DashboardPage() {
         />
         <StatsCard
           title="AI credits"
-          value={mockUser.isPro ? "Pro" : "—"}
-          sub={mockUser.isPro ? "unlimited" : "upgrade to unlock"}
+          value="—"
+          sub="upgrade to unlock"
         />
       </div>
 
@@ -81,15 +78,14 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Pinned items */}
+      {/* Pinned items — only shown when there are pinned items */}
       {pinnedItems.length > 0 && (
         <section>
           <h2 className="mb-3 text-base font-semibold">Pinned</h2>
           <div className="space-y-2">
-            {pinnedItems.map((item) => {
-              const type = typeMap[item.itemTypeId]
-              return <ItemRow key={item.id} item={item} type={type} />
-            })}
+            {pinnedItems.map((item) => (
+              <ItemRow key={item.id} item={item} />
+            ))}
           </div>
         </section>
       )}
@@ -98,10 +94,9 @@ export default async function DashboardPage() {
       <section>
         <h2 className="mb-3 text-base font-semibold">Recent items</h2>
         <div className="space-y-2">
-          {recentItems.map((item) => {
-            const type = typeMap[item.itemTypeId]
-            return <ItemRow key={item.id} item={item} type={type} />
-          })}
+          {recentItems.map((item) => (
+            <ItemRow key={item.id} item={item} />
+          ))}
         </div>
       </section>
     </div>

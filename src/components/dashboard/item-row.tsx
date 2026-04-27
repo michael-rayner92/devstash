@@ -1,8 +1,5 @@
 import { Pin, Code2, Sparkles, Terminal, StickyNote, Link as LinkIcon, File, Image as ImageIcon } from "lucide-react"
-import { mockItems, mockItemTypes } from "@/lib/mock-data"
-
-type Item = (typeof mockItems)[number]
-type ItemType = (typeof mockItemTypes)[number]
+import type { ItemWithType } from "@/lib/db/items"
 
 const iconMap: Record<string, React.ElementType> = {
   Code: Code2,
@@ -14,7 +11,8 @@ const iconMap: Record<string, React.ElementType> = {
   Image: ImageIcon,
 }
 
-export function ItemRow({ item, type }: { item: Item; type: ItemType }) {
+export function ItemRow({ item }: { item: ItemWithType }) {
+  const type = item.itemType
   const Icon = iconMap[type.icon] ?? File
   const color = type.color
   const preview = item.description ?? item.content?.slice(0, 80) ?? item.url ?? ""
@@ -43,8 +41,8 @@ export function ItemRow({ item, type }: { item: Item; type: ItemType }) {
         {item.tags.length > 0 && (
           <div className="flex gap-1">
             {item.tags.slice(0, 2).map((tag) => (
-              <span key={tag} className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                {tag}
+              <span key={tag.id} className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                {tag.name}
               </span>
             ))}
           </div>
