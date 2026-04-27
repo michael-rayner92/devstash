@@ -5,10 +5,12 @@ import { PanelLeft, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { SidebarContent } from "./sidebar-content"
+import { SidebarContent, type SidebarProps } from "./sidebar-content"
 import { cn } from "@/lib/utils"
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+type DashboardShellProps = SidebarProps & { children: React.ReactNode }
+
+export function DashboardShell({ children, ...sidebarProps }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -61,7 +63,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             sidebarOpen ? "w-64" : "w-0 border-r-transparent"
           )}
         >
-          <SidebarContent />
+          <SidebarContent {...sidebarProps} />
         </aside>
 
         <main className="flex-1 overflow-auto">
@@ -73,7 +75,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="flex w-64 flex-col p-0">
           <SheetTitle>Navigation</SheetTitle>
-          <SidebarContent />
+          <SidebarContent {...sidebarProps} />
         </SheetContent>
       </Sheet>
     </div>

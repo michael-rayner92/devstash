@@ -99,6 +99,7 @@ async function seedCollections(
     data: {
       name: "React Patterns",
       description: "Reusable React patterns and hooks",
+      isFavorite: true,
       userId,
     },
   });
@@ -108,6 +109,8 @@ async function seedCollections(
       title: "useDebounce & useLocalStorage hooks",
       description: "Custom hooks for debouncing values and persisting state",
       contentType: ContentType.text,
+      isPinned: true,
+      isFavorite: true,
       language: "typescript",
       content: `import { useState, useEffect } from 'react';
 
@@ -237,6 +240,7 @@ export function slugify(str: string): string {
     data: {
       name: "AI Workflows",
       description: "AI prompts and workflow automations",
+      isFavorite: true,
       userId,
     },
   });
@@ -246,6 +250,7 @@ export function slugify(str: string): string {
       title: "Code Review Prompt",
       description: "Thorough code review prompt for LLMs",
       contentType: ContentType.text,
+      isFavorite: true,
       content: `You are a senior software engineer performing a code review. Review the following code and provide feedback on:
 
 1. **Correctness** — Does the logic do what it intends to? Are there edge cases?
@@ -338,6 +343,7 @@ Code:
       title: "Docker + GitHub Actions CI/CD",
       description: "Multi-stage Dockerfile with GitHub Actions workflow",
       contentType: ContentType.text,
+      isPinned: true,
       language: "dockerfile",
       content: `# Dockerfile
 FROM node:20-alpine AS base
@@ -441,6 +447,7 @@ CMD ["node", "server.js"]
       title: "Find and kill process on port",
       description: "Find what's using a port and kill it (macOS/Linux)",
       contentType: ContentType.text,
+      isFavorite: true,
       content: `lsof -ti tcp:3000 | xargs kill -9`,
       itemTypeId: typeMap.command,
       userId,
@@ -485,6 +492,7 @@ CMD ["node", "server.js"]
       title: "shadcn/ui",
       description: "Beautifully designed components built with Radix UI and Tailwind",
       contentType: ContentType.url,
+      isFavorite: true,
       url: "https://ui.shadcn.com",
       itemTypeId: typeMap.link,
       userId,

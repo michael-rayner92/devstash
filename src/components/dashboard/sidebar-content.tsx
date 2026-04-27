@@ -16,7 +16,7 @@ import {
   File,
   Image as ImageIcon,
 } from "lucide-react"
-import { mockUser, mockItemTypes, mockCollections } from "@/lib/mock-data"
+import type { SidebarItemType, SidebarCollection } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
 
 const iconMap: Record<string, React.ElementType> = {
@@ -29,19 +29,14 @@ const iconMap: Record<string, React.ElementType> = {
   Image: ImageIcon,
 }
 
-const PRO_TYPE_IDS = new Set(["type_file", "type_image"])
+export type SidebarProps = {
+  itemTypes: SidebarItemType[]
+  favoriteCollections: SidebarCollection[]
+  recentCollections: SidebarCollection[]
+  user: { name: string | null; email: string; isPro: boolean } | null
+}
 
-const favoriteCollections = mockCollections.filter((c) => c.isFavorite)
-const recentCollections = mockCollections
-  .filter((c) => !c.isFavorite)
-  .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-  .slice(0, 5)
-
-const typeColorMap = Object.fromEntries(
-  mockItemTypes.map((t) => [t.id, t.color])
-)
-
-export function SidebarContent() {
+export function SidebarContent({ itemTypes, favoriteCollections, recentCollections, user }: SidebarProps) {
   const pathname = usePathname()
 
   return (
@@ -57,7 +52,7 @@ export function SidebarContent() {
       <div className="px-3 mt-4">
         <SectionHeader label="Item types" action={<Plus className="h-3.5 w-3.5" />} />
         <nav className="mt-1 space-y-0.5">
-          {mockItemTypes.map((type) => {
+          {itemTypes.map((type) => {
             const Icon = iconMap[type.icon] ?? File
             const href = `/items/${type.name.toLowerCase()}s`
             return (
@@ -72,8 +67,8 @@ export function SidebarContent() {
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" style={{ color: type.color }} />
-                <span className="flex-1">{type.name}s</span>
-                {PRO_TYPE_IDS.has(type.id) && (
+                <span className="flex-1 capitalize">{type.name}s</span>
+                {type.isPro && (
                   <Lock className="h-3 w-3 text-muted-foreground/50" />
                 )}
               </Link>
@@ -82,59 +77,62 @@ export function SidebarContent() {
         </nav>
       </div>
 
-      {/* Favorites */}
+      {/* Collections */}
       <div className="px-3 mt-6">
-        <SectionHeader label="Favorites" />
-        <nav className="mt-1 space-y-0.5">
-          {favoriteCollections.map((col) => {
-            const color = typeColorMap[col.dominantTypeId] ?? "#6b7280"
-            const href = `/collections/${col.id}`
-            return (
-              <Link
-                key={col.id}
-                href={href}
-                className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="flex-1 truncate">{col.name}</span>
-                <span className="text-xs text-muted-foreground/50">{col.itemCount}</span>
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
+        <SectionHeader label="Collections" />
 
-      {/* Recent collections */}
-      <div className="px-3 mt-6">
-        <SectionHeader label="Recent collections" action={<Plus className="h-3.5 w-3.5" />} />
-        <nav className="mt-1 space-y-0.5">
-          {recentCollections.map((col) => {
-            const color = typeColorMap[col.dominantTypeId] ?? "#6b7280"
-            const href = `/collections/${col.id}`
-            return (
-              <Link
-                key={col.id}
-                href={href}
-                className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="flex-1 truncate">{col.name}</span>
-              </Link>
-            )
-          })}
-        </nav>
+        {favoriteCollections.length > 0 && (
+          <>
+            <p className="px-2 mt-2 mb-0.5 text-xs text-muted-foreground/50">Favourites</p>
+            <nav className="space-y-0.5">
+              {favoriteCollections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/collections/${col.id}`}
+                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                  <span className="flex-1 truncate">{col.name}</span>
+                  <span className="text-xs text-muted-foreground/50">{col.itemCount}</span>
+                </Link>
+              ))}
+            </nav>
+          </>
+        )}
+
+        {recentCollections.length > 0 && (
+          <>
+            <p className="px-2 mt-2 mb-0.5 text-xs text-muted-foreground/50">Recent</p>
+            <nav className="space-y-0.5">
+              {recentCollections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/collections/${col.id}`}
+                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: col.dominantColor ?? "#6b7280" }}
+                  />
+                  <span className="flex-1 truncate">{col.name}</span>
+                </Link>
+              ))}
+            </nav>
+          </>
+        )}
+
+        <Link
+          href="/collections"
+          className="mt-2 flex items-center px-2 py-1.5 text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+        >
+          View all collections
+        </Link>
       </div>
 
       <div className="flex-1" />
 
       {/* Upgrade CTA */}
-      {!mockUser.isPro && (
+      {user && !user.isPro && (
         <div className="mx-3 mb-3 rounded-lg bg-accent p-3">
           <div className="mb-1 flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
@@ -145,20 +143,22 @@ export function SidebarContent() {
       )}
 
       {/* User area */}
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
-            {getInitials(mockUser.name ?? "")}
+      {user && (
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
+              {getInitials(user.name ?? "")}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            </div>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+              {user.isPro ? "PRO" : "FREE"}
+            </span>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{mockUser.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{mockUser.email}</p>
-          </div>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-            {mockUser.isPro ? "PRO" : "FREE"}
-          </span>
         </div>
-      </div>
+      )}
     </div>
   )
 }
