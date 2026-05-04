@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 
-const PRO_TYPE_NAMES = new Set(["File", "Image"])
+const PRO_TYPE_NAMES = new Set(["file", "image"])
 
 export type SidebarItemType = {
   id: string
