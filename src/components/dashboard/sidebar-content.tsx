@@ -7,7 +7,6 @@ import {
   Star,
   Clock,
   Plus,
-  Lock,
   Code2,
   Sparkles,
   Terminal,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react"
 import type { SidebarItemType, SidebarCollection } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 const iconMap: Record<string, React.ElementType> = {
   Code: Code2,
@@ -69,7 +69,7 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
                 <Icon className="h-4 w-4 shrink-0" style={{ color: type.color }} />
                 <span className="flex-1 capitalize">{type.name}s</span>
                 {type.isPro && (
-                  <Lock className="h-3 w-3 text-muted-foreground/50" />
+                  <Badge variant="secondary" className="px-1 py-0 text-[10px] font-semibold leading-4 text-muted-foreground">PRO</Badge>
                 )}
               </Link>
             )
