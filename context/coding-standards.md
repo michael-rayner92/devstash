@@ -6,6 +6,7 @@
 - No `any` types - use proper typing or `unknown`
 - Define interfaces for all props, API responses, and data models
 - Use type inference where obvious, explicit types where helpful
+- Always import React types explicitly using `import type` — never use the ambient `React.X` namespace. Type imports go on a separate line **before** runtime imports: `import type { ComponentProps } from "react"` then `import { forwardRef } from "react"`
 
 ## React
 

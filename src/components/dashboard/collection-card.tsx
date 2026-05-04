@@ -1,25 +1,9 @@
+import type { CSSProperties } from "react"
 import Link from "next/link"
-import { Star, Code2, Sparkles, Terminal, StickyNote, Link as LinkIcon, File, Image as ImageIcon } from "lucide-react"
+import { Star, File } from "lucide-react"
+import { iconMap } from "@/lib/icon-map"
+import { relativeTime } from "@/lib/relative-time"
 import type { CollectionWithStats } from "@/lib/db/collections"
-
-const iconMap: Record<string, React.ElementType> = {
-  Code: Code2,
-  Sparkles,
-  Terminal,
-  StickyNote,
-  Link: LinkIcon,
-  File,
-  Image: ImageIcon,
-}
-
-function relativeTime(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 172800) return "Yesterday"
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-  return `${Math.floor(seconds / 604800)}w ago`
-}
 
 export function CollectionCard({ collection }: { collection: CollectionWithStats }) {
   const { dominantType, allTypes } = collection
@@ -31,7 +15,7 @@ export function CollectionCard({ collection }: { collection: CollectionWithStats
     <Link
       href={`/collections/${collection.id}`}
       className="group flex flex-col rounded-xl border border-border overflow-hidden hover:border-(--type-color) transition-colors"
-      style={{ "--type-color": color } as React.CSSProperties}
+      style={{ "--type-color": color } as CSSProperties}
     >
       <div className="h-0.5 w-full" style={{ backgroundColor: color }} />
       <div

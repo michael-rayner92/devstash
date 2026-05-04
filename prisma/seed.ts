@@ -94,6 +94,10 @@ async function seedCollections(
   userId: string,
   typeMap: Record<string, string>
 ) {
+  // Wipe existing seed data so re-running the seed stays idempotent
+  await prisma.item.deleteMany({ where: { userId } });
+  await prisma.collection.deleteMany({ where: { userId } });
+
   // ── React Patterns ──────────────────────────────────────────────────────
   const reactPatterns = await prisma.collection.create({
     data: {

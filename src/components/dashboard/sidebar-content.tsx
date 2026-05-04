@@ -1,5 +1,6 @@
 "use client"
 
+import type { ElementType, ReactNode } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -7,27 +8,14 @@ import {
   Star,
   Clock,
   Plus,
-  Code2,
   Sparkles,
-  Terminal,
-  StickyNote,
-  Link as LinkIcon,
   File,
-  Image as ImageIcon,
 } from "lucide-react"
+import { iconMap } from "@/lib/icon-map"
+import { getInitials } from "@/lib/string-utils"
 import type { SidebarItemType, SidebarCollection } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-
-const iconMap: Record<string, React.ElementType> = {
-  Code: Code2,
-  Sparkles,
-  Terminal,
-  StickyNote,
-  Link: LinkIcon,
-  File,
-  Image: ImageIcon,
-}
 
 export type SidebarProps = {
   itemTypes: SidebarItemType[]
@@ -50,7 +38,7 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
 
       {/* Item types */}
       <div className="px-3 mt-4">
-        <SectionHeader label="Item types" action={<Plus className="h-3.5 w-3.5" />} />
+        <SectionHeader label="Item types" action={<Plus className="h-3.5 w-3.5" />} actionLabel="Add item type" />
         <nav className="mt-1 space-y-0.5">
           {itemTypes.map((type) => {
             const Icon = iconMap[type.icon] ?? File
@@ -170,7 +158,7 @@ function NavLink({
   active,
 }: {
   href: string
-  icon: React.ElementType
+  icon: ElementType
   label: string
   active: boolean
 }) {
@@ -193,9 +181,11 @@ function NavLink({
 function SectionHeader({
   label,
   action,
+  actionLabel,
 }: {
   label: string
-  action?: React.ReactNode
+  action?: ReactNode
+  actionLabel?: string
 }) {
   return (
     <div className="flex items-center justify-between px-2 mb-1">
@@ -203,18 +193,13 @@ function SectionHeader({
         {label}
       </span>
       {action && (
-        <button className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground">
+        <button
+          aria-label={actionLabel}
+          className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground"
+        >
           {action}
         </button>
       )}
     </div>
   )
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
 }

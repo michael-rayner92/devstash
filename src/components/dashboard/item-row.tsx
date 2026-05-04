@@ -1,15 +1,7 @@
-import { Pin, Code2, Sparkles, Terminal, StickyNote, Link as LinkIcon, File, Image as ImageIcon } from "lucide-react"
+import type { CSSProperties } from "react"
+import { Pin, File } from "lucide-react"
+import { iconMap } from "@/lib/icon-map"
 import type { ItemWithType } from "@/lib/db/items"
-
-const iconMap: Record<string, React.ElementType> = {
-  Code: Code2,
-  Sparkles,
-  Terminal,
-  StickyNote,
-  Link: LinkIcon,
-  File,
-  Image: ImageIcon,
-}
 
 export function ItemRow({ item }: { item: ItemWithType }) {
   const type = item.itemType
@@ -19,7 +11,7 @@ export function ItemRow({ item }: { item: ItemWithType }) {
 
   return (
     <div className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 hover:border-[var(--type-color)] transition-colors cursor-pointer"
-         style={{ "--type-color": color } as React.CSSProperties}>
+         style={{ "--type-color": color } as CSSProperties}>
       <div className="mt-0.5 rounded-md p-1.5 shrink-0" style={{ backgroundColor: `${color}20` }}>
         <Icon className="h-4 w-4" style={{ color }} />
       </div>

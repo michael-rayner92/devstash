@@ -1,9 +1,17 @@
 import Link from "next/link"
 import { CollectionCard } from "@/components/dashboard/collection-card"
 import { ItemRow } from "@/components/dashboard/item-row"
+import { StatsCard } from "@/components/dashboard/stats-card"
 import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
 import { getPinnedItems, getRecentItems } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
+
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return "Good morning"
+  if (hour < 18) return "Good afternoon"
+  return "Good evening"
+}
 
 export default async function DashboardPage() {
   // Temporary: use demo user until auth is wired up
@@ -24,7 +32,7 @@ export default async function DashboardPage() {
     <div className="p-6 space-y-8 max-w-screen-2xl">
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Good morning, {firstName}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{getGreeting()}, {firstName}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Everything you&apos;ve stashed — snippets, prompts, commands, and more. Jump back into
           your latest collections.
@@ -99,24 +107,6 @@ export default async function DashboardPage() {
           ))}
         </div>
       </section>
-    </div>
-  )
-}
-
-function StatsCard({
-  title,
-  value,
-  sub,
-}: {
-  title: string
-  value: string | number
-  sub: string
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs text-muted-foreground">{title}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
     </div>
   )
 }

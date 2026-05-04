@@ -1,8 +1,9 @@
+import type { ReactNode } from "react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { getSidebarItemTypes, getSidebarCollections } from "@/lib/db/sidebar"
 import { prisma } from "@/lib/prisma"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const demoUser = await prisma.user.findUnique({ where: { email: "demo@devstash.io" } })
 
   const [itemTypes, allCollections] = demoUser

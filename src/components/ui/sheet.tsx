@@ -1,6 +1,7 @@
 "use client"
 
-import * as React from "react"
+import type { ComponentRef, ComponentPropsWithoutRef } from "react"
+import { forwardRef } from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { cn } from "@/lib/utils"
 
@@ -9,9 +10,9 @@ const SheetTrigger = DialogPrimitive.Trigger
 const SheetClose = DialogPrimitive.Close
 const SheetPortal = DialogPrimitive.Portal
 
-const SheetOverlay = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+const SheetOverlay = forwardRef<
+  ComponentRef<typeof DialogPrimitive.Overlay>,
+  ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -22,12 +23,12 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = "SheetOverlay"
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  extends ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   side?: "left" | "right"
 }
 
-const SheetContent = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Content>,
+const SheetContent = forwardRef<
+  ComponentRef<typeof DialogPrimitive.Content>,
   SheetContentProps
 >(({ side = "left", className, children, ...props }, ref) => (
   <SheetPortal>
@@ -48,9 +49,9 @@ const SheetContent = React.forwardRef<
 ))
 SheetContent.displayName = "SheetContent"
 
-const SheetTitle = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+const SheetTitle = forwardRef<
+  ComponentRef<typeof DialogPrimitive.Title>,
+  ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title ref={ref} className={cn("sr-only", className)} {...props} />
 ))

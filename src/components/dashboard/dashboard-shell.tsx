@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useState } from "react"
 import { PanelLeft, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,7 +9,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { SidebarContent, type SidebarProps } from "./sidebar-content"
 import { cn } from "@/lib/utils"
 
-type DashboardShellProps = SidebarProps & { children: React.ReactNode }
+type DashboardShellProps = SidebarProps & { children: ReactNode }
 
 export function DashboardShell({ children, ...sidebarProps }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
