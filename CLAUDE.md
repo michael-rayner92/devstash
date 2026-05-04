@@ -21,6 +21,14 @@ npm run lint     # run ESLint
 
 There is no test suite configured.
 
+## Neon MCP
+
+- **Project ID:** `falling-salad-83557562`
+- **Default branch:** `development` (`br-plain-smoke-ald1szfh`)
+- **Production branch:** `production` (`br-spring-field-al118diy`)
+
+Always use the development branch for all Neon MCP operations unless I explicitly say "production". Never run SQL or schema changes against the production branch without explicit confirmation.
+
 ## Stack
 
 - **Next.js 16.2.4** (App Router) with **React 19**
