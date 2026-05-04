@@ -77,6 +77,7 @@ Example v4 configuration:
 - Always use `prisma migrate dev` for schema changes (not `db push`)
 - Run `prisma migrate status` before committing to verify migrations are in sync
 - Production deployments must run `prisma migrate deploy` before the app starts
+- **Prisma 7**: the `url` field is NOT allowed in `schema.prisma`'s datasource block — connection URLs live in `prisma.config.ts` only
 
 ## Data Fetching
 
