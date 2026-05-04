@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma"
 
 const PRO_TYPE_NAMES = new Set(["file", "image"])
 
+const ITEM_TYPE_ORDER = ["snippet", "prompt", "command", "note", "file", "image", "link"]
+
 export type SidebarItemType = {
   id: string
   name: string
@@ -22,13 +24,21 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
   const types = await prisma.itemType.findMany({
     where: { isSystem: true },
   })
-  return types.map((t) => ({
-    id: t.id,
-    name: t.name,
-    icon: t.icon,
-    color: t.color,
-    isPro: PRO_TYPE_NAMES.has(t.name),
-  }))
+  return types
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      icon: t.icon,
+      color: t.color,
+      isPro: PRO_TYPE_NAMES.has(t.name),
+    }))
+    .sort((a, b) => {
+      const ai = ITEM_TYPE_ORDER.indexOf(a.name)
+      const bi = ITEM_TYPE_ORDER.indexOf(b.name)
+      const aOrder = ai === -1 ? Infinity : ai
+      const bOrder = bi === -1 ? Infinity : bi
+      return aOrder - bOrder
+    })
 }
 
 export async function getSidebarCollections(userId: string): Promise<SidebarCollection[]> {
