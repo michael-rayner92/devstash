@@ -1,24 +1,12 @@
-# Current Feature: Auth Credentials - Email/Password Provider
+# Current Feature
 
 ## Status
 
-In Progress
+Complete
 
 ## Goals
 
-- Add `password` field to User model via migration
-- Configure Credentials provider placeholder in `auth.config.ts`
-- Override Credentials provider with bcrypt validation in `auth.ts`
-- Create `POST /api/auth/register` route (name, email, password, confirmPassword)
-- Registration validates matching passwords, checks for existing user, hashes with bcryptjs, creates user
-- Email/password sign-in redirects to `/dashboard`
-- GitHub OAuth continues to work
-
 ## Notes
-
-- Use the split auth config pattern already in place: placeholder `authorize: () => null` in `auth.config.ts`, real bcrypt logic in `auth.ts`
-- `bcryptjs` is already installed
-- Test registration via curl, then sign in at `/api/auth/signin`
 
 ## History
 
@@ -37,3 +25,4 @@ In Progress
 - **2026-05-04** — Code quality quick wins from scanner audit. Added `url = env("DATABASE_URL")` to Prisma schema; extracted shared `iconMap`, `relativeTime`, `getInitials` (+ edge case fix) to `src/lib/`; extracted `StatsCard` to `src/components/dashboard/`; dynamic time-based greeting; seed idempotency via delete-then-create; `aria-label` on sidebar button; replaced all `React.X` namespace type references with explicit `import type` statements; added React import convention to coding-standards.md.
 - **2026-05-04** — Sidebar item type sort order. Added `ITEM_TYPE_ORDER` constant to `getSidebarItemTypes` in `src/lib/db/sidebar.ts`; types are now sorted snippet → prompt → command → note → file → image → link regardless of DB insertion order. Unknown types sort to the end for future custom type support.
 - **2026-05-11** — Auth Setup (Phase 1) completed. Installed `next-auth@beta` and `@auth/prisma-adapter`. Split auth config pattern: `src/auth.config.ts` (edge-safe, GitHub provider), `src/auth.ts` (Prisma adapter + JWT strategy, session callback adds `user.id`). Route handler at `src/app/api/auth/[...nextauth]/route.ts`. `src/proxy.ts` protects `/dashboard/*` via Next.js 16 native proxy support (named `proxy` export). `src/types/next-auth.d.ts` extends Session with `user.id`.
+- **2026-05-11** — Auth Credentials (Phase 2) completed. Added `password String?` to User model via Neon MCP migration. Credentials provider placeholder in `src/auth.config.ts` (edge-safe); full bcrypt validation in `src/auth.ts` overrides placeholder. `POST /api/auth/register` validates 8-char minimum, password match, duplicate email, hashes with bcryptjs. Proxy updated to pass `callbackUrl` when redirecting unauthenticated dashboard requests.
