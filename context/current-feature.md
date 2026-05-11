@@ -1,39 +1,12 @@
-# Current Feature: Auth Setup - NextAuth + GitHub Provider
+# Current Feature
 
 ## Status
 
-In Progress
+Complete
 
 ## Goals
 
-- Install NextAuth v5 (`next-auth@beta`) and `@auth/prisma-adapter`
-- Set up split auth config pattern for edge compatibility
-- Add GitHub OAuth provider
-- Protect `/dashboard/*` routes using Next.js 16 proxy
-- Redirect unauthenticated users to sign-in
-
 ## Notes
-
-**Files to create:**
-1. `src/auth.config.ts` — edge-compatible config (providers only, no adapter)
-2. `src/auth.ts` — full config with Prisma adapter and JWT strategy
-3. `src/app/api/auth/[...nextauth]/route.ts` — export handlers from auth.ts
-4. `src/proxy.ts` — route protection with redirect logic (must be at `src/proxy.ts`, same level as `app/`)
-5. `src/types/next-auth.d.ts` — extend Session type with user.id
-
-**Key gotchas:**
-- Use `next-auth@beta` (not `@latest` which installs v4)
-- Use named export: `export const proxy = auth(...)` not default export
-- Use `session: { strategy: 'jwt' }` with split config pattern
-- Don't set custom `pages.signIn` — use NextAuth's default page
-- Use Context7 to verify the newest config and conventions
-
-**Environment variables needed:** `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`
-
-**Testing:**
-1. Go to `/dashboard` — should redirect to sign-in
-2. Click "Sign in with GitHub"
-3. Verify redirect back to `/dashboard` after auth
 
 ## History
 
@@ -51,3 +24,4 @@ In Progress
 - **2026-05-04** — PRO badge added to sidebar. Created `src/components/ui/badge.tsx` (ShadCN Badge, manual install). Replaced Lock icon on Files and Images item types with a clean, subtle secondary-variant Badge showing "PRO" in uppercase.
 - **2026-05-04** — Code quality quick wins from scanner audit. Added `url = env("DATABASE_URL")` to Prisma schema; extracted shared `iconMap`, `relativeTime`, `getInitials` (+ edge case fix) to `src/lib/`; extracted `StatsCard` to `src/components/dashboard/`; dynamic time-based greeting; seed idempotency via delete-then-create; `aria-label` on sidebar button; replaced all `React.X` namespace type references with explicit `import type` statements; added React import convention to coding-standards.md.
 - **2026-05-04** — Sidebar item type sort order. Added `ITEM_TYPE_ORDER` constant to `getSidebarItemTypes` in `src/lib/db/sidebar.ts`; types are now sorted snippet → prompt → command → note → file → image → link regardless of DB insertion order. Unknown types sort to the end for future custom type support.
+- **2026-05-11** — Auth Setup (Phase 1) completed. Installed `next-auth@beta` and `@auth/prisma-adapter`. Split auth config pattern: `src/auth.config.ts` (edge-safe, GitHub provider), `src/auth.ts` (Prisma adapter + JWT strategy, session callback adds `user.id`). Route handler at `src/app/api/auth/[...nextauth]/route.ts`. `src/proxy.ts` protects `/dashboard/*` via Next.js 16 native proxy support (named `proxy` export). `src/types/next-auth.d.ts` extends Session with `user.id`.
