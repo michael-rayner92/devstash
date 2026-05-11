@@ -4,6 +4,7 @@ import { ItemRow } from "@/components/dashboard/item-row"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
 import { getPinnedItems, getRecentItems } from "@/lib/db/items"
+import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
 function getGreeting(): string {
@@ -14,19 +15,23 @@ function getGreeting(): string {
 }
 
 export default async function DashboardPage() {
-  // Temporary: use demo user until auth is wired up
-  const demoUser = await prisma.user.findUnique({ where: { email: "demo@devstash.io" } })
+  const session = await auth()
+  const userId = session?.user?.id
 
-  const [collections, stats, pinnedItems, recentItems] = demoUser
+  const dbUser = userId
+    ? await prisma.user.findUnique({ where: { id: userId } })
+    : null
+
+  const [collections, stats, pinnedItems, recentItems] = dbUser
     ? await Promise.all([
-        getRecentCollections(demoUser.id, 6),
-        getDashboardStats(demoUser.id),
-        getPinnedItems(demoUser.id),
-        getRecentItems(demoUser.id, 10),
+        getRecentCollections(dbUser.id, 6),
+        getDashboardStats(dbUser.id),
+        getPinnedItems(dbUser.id),
+        getRecentItems(dbUser.id, 10),
       ])
     : [[], { totalItems: 0, totalCollections: 0, totalFavorites: 0 }, [], []]
 
-  const firstName = demoUser?.name?.split(" ")[0] ?? "there"
+  const firstName = dbUser?.name?.split(" ")[0] ?? "there"
 
   return (
     <div className="p-6 space-y-8 max-w-screen-2xl">
