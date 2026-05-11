@@ -51,40 +51,15 @@ async function upsertDemoUser() {
   const passwordHash = await bcrypt.hash("12345678", 12);
   const user = await prisma.user.upsert({
     where: { email },
-    update: {},
+    update: { password: passwordHash },
     create: {
       email,
       name: "Demo User",
       isPro: false,
       emailVerified: new Date(),
-      // NextAuth expects password via a credentials Account record, but we
-      // store the hash directly on the user for the credentials provider.
-      // We'll use the `image` field pattern — this will be wired to auth later.
-      // For now, store nothing; the hash is used when auth is implemented.
+      password: passwordHash,
     },
   });
-
-  // Store hashed password in a separate Account record scoped to credentials
-  const existingAccount = await prisma.account.findUnique({
-    where: {
-      provider_providerAccountId: {
-        provider: "credentials",
-        providerAccountId: email,
-      },
-    },
-  });
-  if (!existingAccount) {
-    await prisma.account.create({
-      data: {
-        userId: user.id,
-        type: "credentials",
-        provider: "credentials",
-        providerAccountId: email,
-        // Store hash in refresh_token for retrieval during auth
-        refresh_token: passwordHash,
-      },
-    });
-  }
 
   console.log(`Upserted demo user: ${email}`);
   return user;

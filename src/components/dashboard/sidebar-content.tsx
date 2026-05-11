@@ -1,8 +1,10 @@
 "use client"
 
 import type { ElementType, ReactNode } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import {
   Home,
   Star,
@@ -10,18 +12,27 @@ import {
   Plus,
   Sparkles,
   File,
+  LogOut,
+  User,
 } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { getInitials } from "@/lib/string-utils"
 import type { SidebarItemType, SidebarCollection } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export type SidebarProps = {
   itemTypes: SidebarItemType[]
   favoriteCollections: SidebarCollection[]
   recentCollections: SidebarCollection[]
-  user: { name: string | null; email: string; isPro: boolean } | null
+  user: { name: string | null; email: string; isPro: boolean; image: string | null } | null
 }
 
 export function SidebarContent({ itemTypes, favoriteCollections, recentCollections, user }: SidebarProps) {
@@ -133,20 +144,57 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
       {/* User area */}
       {user && (
         <div className="border-t border-border p-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
-              {getInitials(user.name ?? "")}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{user.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-            </div>
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              {user.isPro ? "PRO" : "FREE"}
-            </span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex w-full items-center gap-2.5 rounded-md px-1 py-1 text-left transition-colors hover:bg-accent">
+                <UserAvatar name={user.name} image={user.image} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{user.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                </div>
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  {user.isPro ? "PRO" : "FREE"}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => signOut({ callbackUrl: "/sign-in" })}
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
+    </div>
+  )
+}
+
+function UserAvatar({ name, image }: { name: string | null; image: string | null }) {
+  if (image) {
+    return (
+      <Image
+        src={image}
+        alt={name ?? "User avatar"}
+        width={32}
+        height={32}
+        className="h-8 w-8 shrink-0 rounded-full object-cover"
+      />
+    )
+  }
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase">
+      {getInitials(name ?? "")}
     </div>
   )
 }
