@@ -5,8 +5,10 @@ const { auth } = NextAuth(authConfig)
 
 export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth
-  const isOnDashboard = req.nextUrl.pathname.startsWith("/dashboard")
-  if (isOnDashboard && !isLoggedIn) {
+  const isProtected =
+    req.nextUrl.pathname.startsWith("/dashboard") ||
+    req.nextUrl.pathname.startsWith("/profile")
+  if (isProtected && !isLoggedIn) {
     const signInUrl = new URL("/sign-in", req.url)
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname)
     return Response.redirect(signInUrl)
