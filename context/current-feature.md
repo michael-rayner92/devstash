@@ -1,12 +1,28 @@
-# Current Feature
+# Current Feature: Forgot Password
 
 ## Status
 
-Complete
+In Progress
 
 ## Goals
 
+- Add a "Forgot password?" link on the `/sign-in` page
+- Create a `/forgot-password` page with an email input form
+- Create `POST /api/auth/forgot-password` that generates a reset token using the existing `VerificationToken` model (identifier: `password-reset:<email>`) and sends a reset link via Resend (reuse `src/lib/email.ts`)
+- Create a `/reset-password?token=<token>` page with a new-password + confirm-password form
+- Create `POST /api/auth/reset-password` that validates the token, checks expiry, updates the user's hashed password, and deletes the token
+- Show appropriate toasts/errors: unknown email treated silently (no user enumeration), expired/invalid token, success redirect to `/sign-in?reset=1`
+- Rate-limit the forgot-password endpoint: 60-second per-email cooldown to prevent email spam; always return silent 200 (never 429) — per OWASP Forgot Password guidance, the application layer never reveals whether an account exists or is on cooldown; IP-based rate limiting is the right layer for DoS protection and can be added later via middleware/Cloudflare
+- Sign-in page shows a success toast when `?reset=1` is present (reuse the existing `?verified=1` pattern)
+
 ## Notes
+
+- Reuse the existing `VerificationToken` model — no schema changes needed. Use `identifier = "password-reset:<email>"` to namespace reset tokens away from any other tokens stored in the same table.
+- Token expiry: 1 hour (shorter than the 24-hour email-verification token).
+- Only credentials users can reset their password; GitHub OAuth users have no password — silently skip or show a friendly "sign in with GitHub" message if the matched account has no password set.
+- Reuse `bcryptjs` (already installed) for hashing the new password.
+- Reuse the `src/lib/email.ts` helper — add a `sendPasswordResetEmail` function alongside the existing `sendVerificationEmail`.
+- No new Prisma migration needed.
 
 ## History
 
