@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { toast } from "sonner"
+import { signInWithGitHub } from "@/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -64,16 +65,14 @@ export function SignInForm() {
     }
   }
 
-  async function handleGitHub() {
-    await signIn("github", { callbackUrl })
-  }
-
   return (
     <div className="space-y-6">
-      <Button type="button" variant="outline" className="w-full" onClick={handleGitHub}>
-        <GitHubIcon className="mr-2 h-4 w-4" />
-        Continue with GitHub
-      </Button>
+      <form action={signInWithGitHub}>
+        <Button type="submit" variant="outline" className="w-full">
+          <GitHubIcon className="mr-2 h-4 w-4" />
+          Continue with GitHub
+        </Button>
+      </form>
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
