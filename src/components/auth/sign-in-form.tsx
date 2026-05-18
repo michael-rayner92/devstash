@@ -23,8 +23,14 @@ export function SignInForm() {
   const callbackUrl = raw.startsWith("/") ? raw : "/dashboard"
 
   useEffect(() => {
-    if (searchParams.get("registered") === "1") {
-      toast.success("Account created! You can now sign in.")
+    if (searchParams.get("verified") === "1") {
+      toast.success("Email verified! You can now sign in.")
+    }
+    const error = searchParams.get("error")
+    if (error === "InvalidToken") {
+      toast.error("Verification link is invalid.")
+    } else if (error === "TokenExpired") {
+      toast.error("Verification link has expired. Please register again.")
     }
   }, [searchParams])
 
@@ -40,7 +46,11 @@ export function SignInForm() {
     const result = await signIn("credentials", { email, password, redirect: false })
     setLoading(false)
     if (result?.error) {
-      setError("Invalid email or password.")
+      if (result.code === "email_not_verified") {
+        setError("Please verify your email before signing in. Check your inbox.")
+      } else {
+        setError("Invalid email or password.")
+      }
     } else {
       router.push(callbackUrl)
     }

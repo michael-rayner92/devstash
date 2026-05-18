@@ -1,9 +1,13 @@
-import NextAuth from "next-auth"
+import NextAuth, { CredentialsSignin } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import GitHub from "next-auth/providers/github"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+
+class EmailNotVerified extends CredentialsSignin {
+  code = "email_not_verified"
+}
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -35,7 +39,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           user.password
         )
 
-        return passwordMatch ? user : null
+        if (!passwordMatch) return null
+
+        if (!user.emailVerified) {
+          throw new EmailNotVerified()
+        }
+
+        return user
       },
     }),
   ],
