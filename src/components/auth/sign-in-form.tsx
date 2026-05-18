@@ -29,6 +29,9 @@ export function SignInForm() {
     if (searchParams.get("verified") === "1") {
       toast.success("Email verified! You can now sign in.")
     }
+    if (searchParams.get("reset") === "1") {
+      toast.success("Password updated! Sign in with your new password.")
+    }
     const error = searchParams.get("error")
     if (error === "InvalidToken") {
       toast.error("Verification link is invalid.")
@@ -93,7 +96,12 @@ export function SignInForm() {
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor="password" className="text-sm font-medium">Password</label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium">Password</label>
+            <Link href="/forgot-password" className="text-xs text-muted-foreground underline-offset-4 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
