@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
       await prisma.verificationToken.deleteMany({ where: { identifier } })
     }
 
-    const token = crypto.randomUUID()
+    const token = randomBytes(32).toString("hex")
     const expires = new Date(Date.now() + TOKEN_EXPIRY_MS)
 
     await prisma.verificationToken.create({ data: { identifier, token, expires } })

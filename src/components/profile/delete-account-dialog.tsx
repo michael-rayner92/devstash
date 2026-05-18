@@ -3,12 +3,21 @@
 import { useState, useTransition } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { deleteAccount } from "@/actions/profile"
+
+const CONFIRMATION_WORD = "DELETE"
 
 export function DeleteAccountDialog() {
   const [open, setOpen] = useState(false)
+  const [confirmation, setConfirmation] = useState("")
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
+
+  function handleOpenChange(next: boolean) {
+    if (!next) setConfirmation("")
+    setOpen(next)
+  }
 
   function handleConfirm() {
     setError("")
@@ -22,7 +31,7 @@ export function DeleteAccountDialog() {
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
         <Button variant="destructive">Delete account</Button>
       </Dialog.Trigger>
@@ -37,6 +46,20 @@ export function DeleteAccountDialog() {
             This will permanently delete your account and all your data — items, collections, and tags. This action cannot be undone.
           </Dialog.Description>
 
+          <div className="mt-4 space-y-2">
+            <label htmlFor="delete-confirm" className="text-sm text-muted-foreground">
+              Type <span className="font-mono font-semibold text-foreground">{CONFIRMATION_WORD}</span> to confirm
+            </label>
+            <Input
+              id="delete-confirm"
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              placeholder={CONFIRMATION_WORD}
+              disabled={isPending}
+              autoComplete="off"
+            />
+          </div>
+
           {error && (
             <p className="mt-3 text-sm text-destructive">{error}</p>
           )}
@@ -49,7 +72,7 @@ export function DeleteAccountDialog() {
             </Dialog.Close>
             <Button
               variant="destructive"
-              disabled={isPending}
+              disabled={isPending || confirmation !== CONFIRMATION_WORD}
               onClick={handleConfirm}
             >
               {isPending ? "Deleting…" : "Yes, delete my account"}

@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
@@ -9,7 +10,7 @@ const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "f
 const registerSchema = z.object({
   name: z.string().min(1),
   email: z.email(),
-  password: z.string().min(8),
+  password: z.string().min(8).max(72),
 })
 
 export async function POST(req: Request) {
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
       data: { name, email, password: hashed },
     })
 
-    const token = crypto.randomUUID()
+    const token = randomBytes(32).toString("hex")
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
     await prisma.emailVerificationToken.create({

@@ -15,6 +15,20 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) return token
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.sub! },
+        select: { passwordChangedAt: true },
+      })
+      if (
+        dbUser?.passwordChangedAt &&
+        token.iat! < dbUser.passwordChangedAt.getTime() / 1000
+      ) {
+        return null
+      }
+      return token
+    },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub
       return session

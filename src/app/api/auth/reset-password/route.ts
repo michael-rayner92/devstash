@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 const schema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8),
+  password: z.string().min(8).max(72),
 })
 
 export async function POST(req: Request) {
@@ -34,7 +34,10 @@ export async function POST(req: Request) {
     const email = record.identifier.replace("password-reset:", "")
     const hashed = await bcrypt.hash(password, 12)
 
-    await prisma.user.update({ where: { email }, data: { password: hashed } })
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashed, passwordChangedAt: new Date() },
+    })
     await prisma.verificationToken.delete({ where: { token } })
 
     return NextResponse.json({ success: true })

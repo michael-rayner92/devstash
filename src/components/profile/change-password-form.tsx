@@ -44,6 +44,7 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           required
           minLength={8}
+          maxLength={72}
           placeholder="••••••••"
         />
       </div>
@@ -59,6 +60,7 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           required
           minLength={8}
+          maxLength={72}
           placeholder="••••••••"
         />
       </div>
