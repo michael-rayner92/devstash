@@ -38,7 +38,7 @@ export function RegisterForm() {
     setLoading(false)
 
     if (res.ok) {
-      router.push("/sign-in?registered=1")
+      router.push(`/check-email?email=${encodeURIComponent(email)}`)
     } else {
       const data = await res.json()
       setError(data.error ?? "Registration failed.")
