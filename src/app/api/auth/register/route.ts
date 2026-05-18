@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { sendVerificationEmail } from "@/lib/email"
 
+const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "false"
+
 const registerSchema = z.object({
   name: z.string().min(1),
   email: z.email(),
@@ -31,6 +33,13 @@ export async function POST(req: Request) {
     }
 
     const hashed = await bcrypt.hash(password, 12)
+
+    if (!EMAIL_VERIFICATION_ENABLED) {
+      await prisma.user.create({
+        data: { name, email, password: hashed, emailVerified: new Date() },
+      })
+      return NextResponse.json({ success: true, skipVerification: true }, { status: 201 })
+    }
 
     const user = await prisma.user.create({
       data: { name, email, password: hashed },

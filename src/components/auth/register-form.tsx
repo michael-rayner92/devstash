@@ -37,10 +37,14 @@ export function RegisterForm() {
     })
     setLoading(false)
 
+    const data = await res.json()
     if (res.ok) {
-      router.push(`/check-email?email=${encodeURIComponent(email)}`)
+      if (data.skipVerification) {
+        router.push("/sign-in?registered=1")
+      } else {
+        router.push(`/check-email?email=${encodeURIComponent(email)}`)
+      }
     } else {
-      const data = await res.json()
       setError(data.error ?? "Registration failed.")
     }
   }

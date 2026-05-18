@@ -23,6 +23,9 @@ export function SignInForm() {
   const callbackUrl = raw.startsWith("/") ? raw : "/dashboard"
 
   useEffect(() => {
+    if (searchParams.get("registered") === "1") {
+      toast.success("Account created! Sign in to continue.")
+    }
     if (searchParams.get("verified") === "1") {
       toast.success("Email verified! You can now sign in.")
     }
