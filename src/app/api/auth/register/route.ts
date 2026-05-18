@@ -4,6 +4,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { sendVerificationEmail } from "@/lib/email"
+import { checkRateLimit, getIP, retryAfterMessage } from "@/lib/rate-limit"
 
 const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "false"
 
@@ -14,6 +15,16 @@ const registerSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  const ip = getIP(req)
+  const rl = await checkRateLimit("register", ip)
+  if (!rl.success) {
+    const message = retryAfterMessage(rl.reset)
+    return NextResponse.json({ error: message }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) },
+    })
+  }
+
   try {
     const body = await req.json()
     const parsed = registerSchema.safeParse(body)

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { sendVerificationEmail } from "@/lib/email"
+import { checkRateLimit, getIP, retryAfterMessage } from "@/lib/rate-limit"
 
 const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "false"
 
@@ -17,15 +18,26 @@ const OK = NextResponse.json({ success: true })
 export async function POST(req: Request) {
   if (!EMAIL_VERIFICATION_ENABLED) return OK
 
+  // Parse email first so we can use it as part of the rate limit key
+  const cloned = req.clone()
+  const body = await cloned.json().catch(() => ({}))
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid email." }, { status: 400 })
+  }
+  const { email } = parsed.data
+
+  const ip = getIP(req)
+  const rl = await checkRateLimit("resend-verification", `${ip}:${email}`)
+  if (!rl.success) {
+    const message = retryAfterMessage(rl.reset)
+    return NextResponse.json({ error: message }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) },
+    })
+  }
+
   try {
-    const body = await req.json()
-    const parsed = schema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid email." }, { status: 400 })
-    }
-
-    const { email } = parsed.data
-
     const user = await prisma.user.findUnique({
       where: { email },
       include: { emailVerificationTokens: { orderBy: { expires: "desc" }, take: 1 } },

@@ -50,7 +50,9 @@ export function ResetPasswordForm() {
     }
 
     const data = await res.json()
-    if (data.error === "TokenExpired") {
+    if (res.status === 429) {
+      setError(data.error ?? "Too many attempts. Please try again later.")
+    } else if (data.error === "TokenExpired") {
       setError("This reset link has expired. Please request a new one.")
     } else if (data.error === "InvalidToken") {
       setError("Invalid reset link. Please request a new one.")

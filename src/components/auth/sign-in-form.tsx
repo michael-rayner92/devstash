@@ -52,7 +52,9 @@ export function SignInForm() {
     const result = await signIn("credentials", { email, password, redirect: false })
     setLoading(false)
     if (result?.error) {
-      if (result.code === "email_not_verified") {
+      if (result.code === "rate_limited") {
+        setError("Too many sign-in attempts. Please try again later.")
+      } else if (result.code === "email_not_verified") {
         setError("Please verify your email before signing in. Check your inbox.")
       } else {
         setError("Invalid email or password.")

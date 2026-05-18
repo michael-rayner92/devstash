@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { sendPasswordResetEmail } from "@/lib/email"
+import { checkRateLimit, getIP, retryAfterMessage } from "@/lib/rate-limit"
 
 const schema = z.object({
   email: z.email(),
@@ -12,6 +13,16 @@ const TOKEN_EXPIRY_MS = 60 * 60 * 1000 // 1 hour
 const COOLDOWN_MS = 60 * 1000 // 60 seconds between reset emails
 
 export async function POST(req: Request) {
+  const ip = getIP(req)
+  const rl = await checkRateLimit("forgot-password", ip)
+  if (!rl.success) {
+    const message = retryAfterMessage(rl.reset)
+    return NextResponse.json({ error: message }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) },
+    })
+  }
+
   try {
     const body = await req.json()
     const parsed = schema.safeParse(body)

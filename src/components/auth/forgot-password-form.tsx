@@ -9,16 +9,23 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
+    setError("")
     setLoading(true)
-    await fetch("/api/auth/forgot-password", {
+    const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     })
     setLoading(false)
+    if (res.status === 429) {
+      const data = await res.json()
+      setError(data.error ?? "Too many attempts. Please try again later.")
+      return
+    }
     setSubmitted(true)
   }
 
@@ -51,6 +58,8 @@ export function ForgotPasswordForm() {
             placeholder="you@example.com"
           />
         </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Sending…" : "Send reset link"}
