@@ -1,28 +1,12 @@
-# Current Feature: Forgot Password
+# Current Feature
 
 ## Status
 
-In Progress
+Complete
 
 ## Goals
 
-- Add a "Forgot password?" link on the `/sign-in` page
-- Create a `/forgot-password` page with an email input form
-- Create `POST /api/auth/forgot-password` that generates a reset token using the existing `VerificationToken` model (identifier: `password-reset:<email>`) and sends a reset link via Resend (reuse `src/lib/email.ts`)
-- Create a `/reset-password?token=<token>` page with a new-password + confirm-password form
-- Create `POST /api/auth/reset-password` that validates the token, checks expiry, updates the user's hashed password, and deletes the token
-- Show appropriate toasts/errors: unknown email treated silently (no user enumeration), expired/invalid token, success redirect to `/sign-in?reset=1`
-- Rate-limit the forgot-password endpoint: 60-second per-email cooldown to prevent email spam; always return silent 200 (never 429) — per OWASP Forgot Password guidance, the application layer never reveals whether an account exists or is on cooldown; IP-based rate limiting is the right layer for DoS protection and can be added later via middleware/Cloudflare
-- Sign-in page shows a success toast when `?reset=1` is present (reuse the existing `?verified=1` pattern)
-
 ## Notes
-
-- Reuse the existing `VerificationToken` model — no schema changes needed. Use `identifier = "password-reset:<email>"` to namespace reset tokens away from any other tokens stored in the same table.
-- Token expiry: 1 hour (shorter than the 24-hour email-verification token).
-- Only credentials users can reset their password; GitHub OAuth users have no password — silently skip or show a friendly "sign in with GitHub" message if the matched account has no password set.
-- Reuse `bcryptjs` (already installed) for hashing the new password.
-- Reuse the `src/lib/email.ts` helper — add a `sendPasswordResetEmail` function alongside the existing `sendVerificationEmail`.
-- No new Prisma migration needed.
 
 ## History
 
@@ -44,4 +28,5 @@ In Progress
 - **2026-05-11** — Auth Credentials (Phase 2) completed. Added `password String?` to User model via Neon MCP migration. Credentials provider placeholder in `src/auth.config.ts` (edge-safe); full bcrypt validation in `src/auth.ts` overrides placeholder. `POST /api/auth/register` validates 8-char minimum, password match, duplicate email, hashes with bcryptjs. Proxy updated to pass `callbackUrl` when redirecting unauthenticated dashboard requests.
 - **2026-05-11** — Auth UI (Phase 3) completed. Custom `/sign-in` page (credentials form + GitHub OAuth, open-redirect-safe callbackUrl) and `/register` page (Zod-validated, success toast via Sonner on redirect). Sidebar user area upgraded: real `UserAvatar` component (GitHub image or initials fallback), Radix `DropdownMenu` with Profile link and Sign out. Dashboard layout and page wired to real session via `auth()`. `avatars.githubusercontent.com` added to `next.config.ts` remotePatterns. Dead credentials Account seed block removed.
 - **2026-05-18** — Email verification toggle added. `EMAIL_VERIFICATION_ENABLED` env var (default `true`) bypasses the full verification flow when set to `false`. Register route creates users pre-verified and returns `skipVerification: true`; form redirects to `/sign-in?registered=1` with a success toast. `auth.ts` skips the `emailVerified` check. Resend-verification endpoint short-circuits immediately. Set to `false` in `.env.local` to unblock dev testing without a verified Resend domain.
+- **2026-05-18** — Forgot password flow completed. "Forgot password?" link added to sign-in page. `/forgot-password` page sends a reset link via Resend; `/reset-password?token=…` page validates the token and updates the hashed password. Uses existing `VerificationToken` model with `identifier = "password-reset:<email>"` (1-hour expiry). 60s per-email cooldown enforced silently — all paths (unknown email, OAuth-only, cooldown) return a uniform 200 per OWASP Forgot Password guidance. No schema migration required.
 - **2026-05-18** — Email verification on register completed. `EmailVerificationToken` model added to Prisma schema (migration applied to Neon dev branch). Resend installed; `src/lib/email.ts` sends 24-hour verification link. Register route generates token and fires email; register form redirects to `/check-email?email=…`. `/api/auth/verify-email` validates token, sets `emailVerified`, redirects to `/sign-in?verified=1`. `/api/auth/resend-verification` reissues token with 60s cooldown. `auth.ts` blocks unverified credentials users via typed `CredentialsSignin` subclass (`email_not_verified` code). Sign-in form handles the new error code and token error/success toasts. `scripts/purge-users.ts` added to wipe non-demo users from the DB.
