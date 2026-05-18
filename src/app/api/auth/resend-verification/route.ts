@@ -3,6 +3,8 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { sendVerificationEmail } from "@/lib/email"
 
+const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "false"
+
 const schema = z.object({ email: z.email() })
 
 const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000
@@ -12,6 +14,8 @@ const COOLDOWN_MS = 60 * 1000
 const OK = NextResponse.json({ success: true })
 
 export async function POST(req: Request) {
+  if (!EMAIL_VERIFICATION_ENABLED) return OK
+
   try {
     const body = await req.json()
     const parsed = schema.safeParse(body)

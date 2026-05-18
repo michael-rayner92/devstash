@@ -5,6 +5,8 @@ import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 
+const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "false"
+
 class EmailNotVerified extends CredentialsSignin {
   code = "email_not_verified"
 }
@@ -41,7 +43,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
         if (!passwordMatch) return null
 
-        if (!user.emailVerified) {
+        if (EMAIL_VERIFICATION_ENABLED && !user.emailVerified) {
           throw new EmailNotVerified()
         }
 
