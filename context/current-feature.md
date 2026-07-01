@@ -1,25 +1,16 @@
-# Current Feature: Stats & Sidebar (DB Wiring)
+# Current Feature
 
 ## Status
 
-Complete
+
 
 ## Goals
 
-- Display stats from real DB data, keeping the current design/layout
-- Display item types in sidebar with their icons, linking to `/items/[typename]`
-- Add "View all collections" link under the collections list going to `/collections`
-- Keep star icons for favorite collections; recents show a colored circle based on dominant item type
-- Create `src/lib/db/items.ts` with database functions (reference `collections.ts`)
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-This feature was already fully implemented in the 2026-04-27 session. All goals were met:
-- `src/lib/db/items.ts` created with `getPinnedItems` and `getRecentItems`
-- `src/lib/db/sidebar.ts` created with `getSidebarItemTypes` and `getSidebarCollections`
-- Stats wired to DB via `getDashboardStats` in `collections.ts`
-- Sidebar collections show star icons for favorites and colored circles for recents
-- "View all collections" link added
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -46,3 +37,4 @@ This feature was already fully implemented in the 2026-04-27 session. All goals 
 - **2026-05-18** — Profile page completed. `/profile` route (proxy + page-level auth guard). `src/lib/db/profile.ts` fetches user info, total items/collections, and per-type item counts in parallel. `src/actions/profile.ts` has `changePassword` (Zod + bcrypt current-password validation) and `deleteAccount` (redirects to `/sign-in?deleted=1`). `ChangePasswordForm` uses `useActionState` + `useRef`/`form.reset()` to clear inputs on success. `DeleteAccountDialog` uses Radix Dialog for confirmation. Change password section hidden for GitHub-only accounts (`hasPassword` flag). Avatar reads from DB (`profile.image`) for freshness.
 - **2026-05-18** — GitHub OAuth redirect fixed. Replaced client-side `signIn("github", { callbackUrl })` with a server action (`src/actions/auth.ts`) that calls `signIn("github", { redirectTo: "/dashboard" })` from `@/auth`. GitHub button in `sign-in-form.tsx` is now a `<form action={signInWithGitHub}>` — eliminates the two-click bug caused by client-side redirect timing.
 - **2026-05-18** — Rate limiting for auth completed. `src/lib/rate-limit.ts` utility (Upstash Redis + sliding window, fail-open). Login rate-limited inside `authorize` (5/15 min, IP+email key; falls back to IP for empty-credential spam). Register and forgot-password limited 3/hour by IP. Reset-password limited 5/15 min by IP+token (avoids shared-NAT collateral). Resend-verification limited 3/15 min by IP+email. All routes return 429 with `Retry-After` header and human-readable message. Frontend forms updated to display rate limit errors inline.
+- **2026-07-01** — Items list view completed. New `/items/[type]` dynamic route renders a responsive grid (1 col mobile, 2 cols `md`+) of a new `ItemCard` component, left border colored per item type. `getItemTypeByName` and `getItemsByType` added to `src/lib/db/items.ts`, scoped to the signed-in user. Extracted `AuthenticatedShell` from `dashboard/layout.tsx` so `/items` reuses the same sidebar shell; `/items` added to protected routes in `src/proxy.ts`. Empty state redesigned as a dashed-border panel with the type's tinted icon, heading, and subtext instead of a plain text line.
