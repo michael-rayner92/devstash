@@ -1,16 +1,20 @@
-# Current Feature
+# Current Feature: Three-Column Items Grid
 
 ## Status
 
-
+Completed
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Items grid at `src/app/items/[type]/page.tsx:44` shows 3 columns on large screens instead of maxing out at 2
+- Stay responsive: 1 column on mobile, scaling up through intermediate breakpoints to 3 columns on large screens
+- No change to `ItemCard` itself — grid container only
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Current grid: `grid grid-cols-1 md:grid-cols-2 gap-4` (`src/app/items/[type]/page.tsx:44`)
+- Page renders inside the sidebar shell (`AuthenticatedShell`) with `max-w-screen-2xl`, so available width is less than full viewport — verify the 3-column breakpoint doesn't feel cramped in the browser, including with the sidebar expanded vs. collapsed
+- UI/layout-only change — no server actions or utilities touched, so no new unit tests expected
 
 ## History
 
