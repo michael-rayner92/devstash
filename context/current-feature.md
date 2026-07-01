@@ -1,20 +1,16 @@
-# Current Feature: Three-Column Items Grid
+# Current Feature
 
 ## Status
 
-Completed
+
 
 ## Goals
 
-- Items grid at `src/app/items/[type]/page.tsx:44` shows 3 columns on large screens instead of maxing out at 2
-- Stay responsive: 1 column on mobile, scaling up through intermediate breakpoints to 3 columns on large screens
-- No change to `ItemCard` itself — grid container only
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- Current grid: `grid grid-cols-1 md:grid-cols-2 gap-4` (`src/app/items/[type]/page.tsx:44`)
-- Page renders inside the sidebar shell (`AuthenticatedShell`) with `max-w-screen-2xl`, so available width is less than full viewport — verify the 3-column breakpoint doesn't feel cramped in the browser, including with the sidebar expanded vs. collapsed
-- UI/layout-only change — no server actions or utilities touched, so no new unit tests expected
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -43,3 +39,4 @@ Completed
 - **2026-05-18** — Rate limiting for auth completed. `src/lib/rate-limit.ts` utility (Upstash Redis + sliding window, fail-open). Login rate-limited inside `authorize` (5/15 min, IP+email key; falls back to IP for empty-credential spam). Register and forgot-password limited 3/hour by IP. Reset-password limited 5/15 min by IP+token (avoids shared-NAT collateral). Resend-verification limited 3/15 min by IP+email. All routes return 429 with `Retry-After` header and human-readable message. Frontend forms updated to display rate limit errors inline.
 - **2026-07-01** — Items list view completed. New `/items/[type]` dynamic route renders a responsive grid (1 col mobile, 2 cols `md`+) of a new `ItemCard` component, left border colored per item type. `getItemTypeByName` and `getItemsByType` added to `src/lib/db/items.ts`, scoped to the signed-in user. Extracted `AuthenticatedShell` from `dashboard/layout.tsx` so `/items` reuses the same sidebar shell; `/items` added to protected routes in `src/proxy.ts`. Empty state redesigned as a dashed-border panel with the type's tinted icon, heading, and subtext instead of a plain text line.
 - **2026-07-01** — Vitest unit testing set up. Installed `vitest`; path aliases resolved via Vite 8's native `resolve.tsconfigPaths` (no extra plugin needed). `vitest.config.ts` scopes tests to `src/**/*.test.ts`, node environment. Added `npm run test` / `npm run test:watch`. Example tests colocated next to source: `src/lib/string-utils.test.ts`, `src/lib/relative-time.test.ts` (fake timers), and `src/actions/profile.test.ts` (mocks `@/auth`, `@/lib/prisma`, `bcryptjs`, `next/navigation` to cover `changePassword`/`deleteAccount` without touching the real DB). Updated `CLAUDE.md`, `context/ai-interaction.md` (workflow step 4 now runs tests alongside build), and `context/coding-standards.md` (new Testing section; also fixed a pre-existing unclosed code fence that was swallowing the rest of the doc into a code block).
+- **2026-07-01** — Three-column items grid completed. Grid at `src/app/items/[type]/page.tsx:44` now escalates `grid-cols-1 md:grid-cols-2 xl:grid-cols-3` instead of maxing out at 2 columns. `xl` (1280px) chosen over `lg` (1024px) after checking the sidebar shell's expanded width (256px) plus page padding — `lg` left cards too cramped (~240px wide) with the sidebar open. Verified responsively in-browser at 375/800/1100/1300/1440px widths.
