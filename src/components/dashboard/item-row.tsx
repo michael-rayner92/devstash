@@ -1,16 +1,31 @@
-import type { CSSProperties } from "react"
+"use client"
+
+import type { CSSProperties, KeyboardEvent } from "react"
 import { Pin, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
+import { useItemDrawer } from "@/components/items/item-drawer-provider"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ItemRow({ item }: { item: ItemWithType }) {
+  const { openItem } = useItemDrawer()
   const type = item.itemType
   const Icon = iconMap[type.icon] ?? File
   const color = type.color
   const preview = item.description ?? item.content?.slice(0, 80) ?? item.url ?? ""
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      openItem(item.id)
+    }
+  }
+
   return (
-    <div className="group flex items-start gap-3 rounded-lg border border-border border-l-4 bg-card px-4 py-3 hover:border-(--type-color) transition-colors cursor-pointer"
+    <div role="button"
+         tabIndex={0}
+         onClick={() => openItem(item.id)}
+         onKeyDown={handleKeyDown}
+         className="group flex items-start gap-3 rounded-lg border border-border border-l-4 bg-card px-4 py-3 hover:border-(--type-color) transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
          style={{ "--type-color": color, borderLeftColor: color } as CSSProperties}>
       <div className="mt-0.5 rounded-md p-1.5 shrink-0" style={{ backgroundColor: `${color}20` }}>
         <Icon className="h-4 w-4" style={{ color }} />

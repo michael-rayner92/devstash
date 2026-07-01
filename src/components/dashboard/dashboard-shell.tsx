@@ -6,6 +6,7 @@ import { PanelLeft, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { ItemDrawerProvider } from "@/components/items/item-drawer-provider"
 import { SidebarContent, type SidebarProps } from "./sidebar-content"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +17,7 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
+    <ItemDrawerProvider>
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
         {/* Mobile toggle — opens Sheet */}
@@ -80,5 +82,6 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
         </SheetContent>
       </Sheet>
     </div>
+    </ItemDrawerProvider>
   )
 }
