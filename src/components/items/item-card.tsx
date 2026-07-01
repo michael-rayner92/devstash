@@ -1,18 +1,33 @@
-import type { CSSProperties } from "react"
+"use client"
+
+import type { CSSProperties, KeyboardEvent } from "react"
 import { Pin, Star, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
+import { useItemDrawer } from "@/components/items/item-drawer-provider"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ItemCard({ item }: { item: ItemWithType }) {
+  const { openItem } = useItemDrawer()
   const type = item.itemType
   const Icon = iconMap[type.icon] ?? File
   const color = type.color
   const preview = item.description ?? item.content?.slice(0, 120) ?? item.url ?? ""
 
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      openItem(item.id)
+    }
+  }
+
   return (
     <div
-      className="group flex flex-col rounded-xl border border-border border-l-4 bg-card p-4 hover:border-(--type-color) transition-colors cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={() => openItem(item.id)}
+      onKeyDown={handleKeyDown}
+      className="group flex flex-col rounded-xl border border-border border-l-4 bg-card p-4 hover:border-(--type-color) transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ "--type-color": color, borderLeftColor: color } as CSSProperties}
     >
       <div className="mb-2 flex items-center justify-between">
