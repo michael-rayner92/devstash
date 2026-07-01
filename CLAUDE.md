@@ -14,12 +14,14 @@ Read the following to get the full context of the project:
 ## Commands
 
 ```bash
-npm run dev      # start dev server at http://localhost:3000
-npm run build    # production build
-npm run lint     # run ESLint
+npm run dev         # start dev server at http://localhost:3000
+npm run build       # production build
+npm run lint        # run ESLint
+npm run test        # run unit tests once (Vitest)
+npm run test:watch  # run unit tests in watch mode
 ```
 
-There is no test suite configured.
+Unit tests cover **server actions** (`src/actions/`) and **utilities** (`src/lib/`) only — no component tests. See @context/coding-standards.md for conventions.
 
 ## Neon MCP
 

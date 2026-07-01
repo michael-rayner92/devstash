@@ -47,6 +47,7 @@ Example v4 configuration:
 @theme {
   --color-primary: oklch(50% 0.2 250);
 }
+```
 
 ## File Organization
 
@@ -96,4 +97,15 @@ Example v4 configuration:
 - No commented-out code unless specified
 - No unused imports or variables
 - Keep functions under 50 lines when possible
-```
+
+## Testing
+
+- **Vitest** for unit tests — `npm run test` (once) or `npm run test:watch`
+- **Scope**: only **Server Actions** (`src/actions/`) and **utilities** (`src/lib/`) are unit tested. No component or DOM testing.
+- Colocate test files next to the source file: `src/lib/string-utils.ts` → `src/lib/string-utils.test.ts`
+- Mock everything at the module boundary — never hit the real Neon DB or external services in a unit test:
+  - `vi.mock("@/lib/prisma", ...)` for Prisma
+  - `vi.mock("@/auth", ...)` for session/auth checks
+  - Mock third-party packages that do real I/O or heavy crypto (e.g. `bcryptjs`, `resend`)
+- Use `vi.mocked(fn)` to get typed mock helpers; if a dependency's real type is too complex to mock cleanly (e.g. Prisma's generated overloads), cast through `unknown` to a narrow local interface rather than using `any`
+- Assert on both the return value and any mocked calls that matter (e.g. `prisma.user.update` was called with the right args)

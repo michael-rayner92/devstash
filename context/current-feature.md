@@ -1,16 +1,22 @@
-# Current Feature
+# Current Feature: Vitest Unit Testing Setup
 
 ## Status
 
-
+Completed
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add Vitest as the unit test runner
+- Scope: test **server actions** (`src/actions/**`) and **utilities** (`src/lib/**`, excluding `src/lib/db/**` which is thin Prisma passthroughs) only — no component testing
+- Resolve the `@/*` path alias in tests the same way the app does
+- Provide a couple of example tests (one utility, one server action with mocked `prisma`/`auth`) to establish the pattern for future tests
+- Update `context/ai-interaction.md` workflow step 4 and `CLAUDE.md` now that a test suite exists
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Vitest only, no component/DOM testing (no `jsdom`, no React Testing Library) per scope
+- Mock `@/lib/prisma`, `@/auth`, and `bcryptjs` in action tests to keep them fast and isolated from the real DB
+- Test files colocated next to source as `*.test.ts`
 
 ## History
 
@@ -38,3 +44,4 @@
 - **2026-05-18** — GitHub OAuth redirect fixed. Replaced client-side `signIn("github", { callbackUrl })` with a server action (`src/actions/auth.ts`) that calls `signIn("github", { redirectTo: "/dashboard" })` from `@/auth`. GitHub button in `sign-in-form.tsx` is now a `<form action={signInWithGitHub}>` — eliminates the two-click bug caused by client-side redirect timing.
 - **2026-05-18** — Rate limiting for auth completed. `src/lib/rate-limit.ts` utility (Upstash Redis + sliding window, fail-open). Login rate-limited inside `authorize` (5/15 min, IP+email key; falls back to IP for empty-credential spam). Register and forgot-password limited 3/hour by IP. Reset-password limited 5/15 min by IP+token (avoids shared-NAT collateral). Resend-verification limited 3/15 min by IP+email. All routes return 429 with `Retry-After` header and human-readable message. Frontend forms updated to display rate limit errors inline.
 - **2026-07-01** — Items list view completed. New `/items/[type]` dynamic route renders a responsive grid (1 col mobile, 2 cols `md`+) of a new `ItemCard` component, left border colored per item type. `getItemTypeByName` and `getItemsByType` added to `src/lib/db/items.ts`, scoped to the signed-in user. Extracted `AuthenticatedShell` from `dashboard/layout.tsx` so `/items` reuses the same sidebar shell; `/items` added to protected routes in `src/proxy.ts`. Empty state redesigned as a dashed-border panel with the type's tinted icon, heading, and subtext instead of a plain text line.
+- **2026-07-01** — Vitest unit testing set up. Installed `vitest`; path aliases resolved via Vite 8's native `resolve.tsconfigPaths` (no extra plugin needed). `vitest.config.ts` scopes tests to `src/**/*.test.ts`, node environment. Added `npm run test` / `npm run test:watch`. Example tests colocated next to source: `src/lib/string-utils.test.ts`, `src/lib/relative-time.test.ts` (fake timers), and `src/actions/profile.test.ts` (mocks `@/auth`, `@/lib/prisma`, `bcryptjs`, `next/navigation` to cover `changePassword`/`deleteAccount` without touching the real DB). Updated `CLAUDE.md`, `context/ai-interaction.md` (workflow step 4 now runs tests alongside build), and `context/coding-standards.md` (new Testing section; also fixed a pre-existing unclosed code fence that was swallowing the rest of the doc into a code block).
