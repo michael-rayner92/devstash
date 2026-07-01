@@ -10,8 +10,8 @@ export function ItemRow({ item }: { item: ItemWithType }) {
   const preview = item.description ?? item.content?.slice(0, 80) ?? item.url ?? ""
 
   return (
-    <div className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 hover:border-[var(--type-color)] transition-colors cursor-pointer"
-         style={{ "--type-color": color } as CSSProperties}>
+    <div className="group flex items-start gap-3 rounded-lg border border-border border-l-4 bg-card px-4 py-3 hover:border-(--type-color) transition-colors cursor-pointer"
+         style={{ "--type-color": color, borderLeftColor: color } as CSSProperties}>
       <div className="mt-0.5 rounded-md p-1.5 shrink-0" style={{ backgroundColor: `${color}20` }}>
         <Icon className="h-4 w-4" style={{ color }} />
       </div>
