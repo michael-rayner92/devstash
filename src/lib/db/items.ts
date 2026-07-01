@@ -22,3 +22,15 @@ export async function getRecentItems(userId: string, limit = 10): Promise<ItemWi
     include: { itemType: true, tags: true },
   })
 }
+
+export async function getItemTypeByName(name: string): Promise<ItemType | null> {
+  return prisma.itemType.findFirst({ where: { name, isSystem: true } })
+}
+
+export async function getItemsByType(userId: string, typeName: string): Promise<ItemWithType[]> {
+  return prisma.item.findMany({
+    where: { userId, itemType: { name: typeName } },
+    orderBy: { updatedAt: "desc" },
+    include: { itemType: true, tags: true },
+  })
+}
