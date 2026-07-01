@@ -1,22 +1,16 @@
-# Current Feature: Vitest Unit Testing Setup
+# Current Feature
 
 ## Status
 
-Completed
+
 
 ## Goals
 
-- Add Vitest as the unit test runner
-- Scope: test **server actions** (`src/actions/**`) and **utilities** (`src/lib/**`, excluding `src/lib/db/**` which is thin Prisma passthroughs) only — no component testing
-- Resolve the `@/*` path alias in tests the same way the app does
-- Provide a couple of example tests (one utility, one server action with mocked `prisma`/`auth`) to establish the pattern for future tests
-- Update `context/ai-interaction.md` workflow step 4 and `CLAUDE.md` now that a test suite exists
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- Vitest only, no component/DOM testing (no `jsdom`, no React Testing Library) per scope
-- Mock `@/lib/prisma`, `@/auth`, and `bcryptjs` in action tests to keep them fast and isolated from the real DB
-- Test files colocated next to source as `*.test.ts`
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
