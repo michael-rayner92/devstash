@@ -1,4 +1,4 @@
-# Current Feature
+# Current Feature: Stats & Sidebar (DB Wiring)
 
 ## Status
 
@@ -6,7 +6,20 @@ Complete
 
 ## Goals
 
+- Display stats from real DB data, keeping the current design/layout
+- Display item types in sidebar with their icons, linking to `/items/[typename]`
+- Add "View all collections" link under the collections list going to `/collections`
+- Keep star icons for favorite collections; recents show a colored circle based on dominant item type
+- Create `src/lib/db/items.ts` with database functions (reference `collections.ts`)
+
 ## Notes
+
+This feature was already fully implemented in the 2026-04-27 session. All goals were met:
+- `src/lib/db/items.ts` created with `getPinnedItems` and `getRecentItems`
+- `src/lib/db/sidebar.ts` created with `getSidebarItemTypes` and `getSidebarCollections`
+- Stats wired to DB via `getDashboardStats` in `collections.ts`
+- Sidebar collections show star icons for favorites and colored circles for recents
+- "View all collections" link added
 
 ## History
 
