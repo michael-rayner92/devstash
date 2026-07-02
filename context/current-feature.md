@@ -1,27 +1,16 @@
-# Current Feature: Item Drawer
+# Current Feature
 
 ## Status
 
-In Progress
+
 
 ## Goals
 
-- Add a right-side slide-in drawer (shadcn Sheet) that serves as the item detail view — no separate item page.
-- Clicking any `ItemCard` opens the drawer populated with that item's full data.
-- Works on both the dashboard and the `/items/[type]` list pages.
-- Client wrapper component manages drawer open/close state (pages remain server components).
-- Snappy UX: fetch full detail on click (no page navigation), show a skeleton/loading state while fetching.
-- Drawer displays: type icon + type name + language badge, title, description, CONTENT block, TAGS, COLLECTIONS, and metadata (Type, Updated, ID).
-- Action bar: Favorite (star, yellow when active), Pin, Copy, Edit (pencil), and Delete (trash, right-aligned) — layout per screenshot.
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- **Data fetching split:**
-  - Card data (title, description, tags, etc.) continues to be fetched by the server component as it is today.
-  - Full item detail (content, collections, language, etc.) is fetched on click via a new API route `GET /api/items/[id]`.
-  - Query function lives in `src/lib/db/items.ts`; the API route calls it with an auth check (scoped to the signed-in user).
-- Scope: this iteration is the **detail display only**. Extras like the code editor, AI actions, and item-specific editing come later.
-- Reference visual: `context/screenshots/dashboard-ui-drawer.png` (opens from the right, dark theme, type-colored accents).
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -51,3 +40,4 @@ In Progress
 - **2026-07-01** — Items list view completed. New `/items/[type]` dynamic route renders a responsive grid (1 col mobile, 2 cols `md`+) of a new `ItemCard` component, left border colored per item type. `getItemTypeByName` and `getItemsByType` added to `src/lib/db/items.ts`, scoped to the signed-in user. Extracted `AuthenticatedShell` from `dashboard/layout.tsx` so `/items` reuses the same sidebar shell; `/items` added to protected routes in `src/proxy.ts`. Empty state redesigned as a dashed-border panel with the type's tinted icon, heading, and subtext instead of a plain text line.
 - **2026-07-01** — Vitest unit testing set up. Installed `vitest`; path aliases resolved via Vite 8's native `resolve.tsconfigPaths` (no extra plugin needed). `vitest.config.ts` scopes tests to `src/**/*.test.ts`, node environment. Added `npm run test` / `npm run test:watch`. Example tests colocated next to source: `src/lib/string-utils.test.ts`, `src/lib/relative-time.test.ts` (fake timers), and `src/actions/profile.test.ts` (mocks `@/auth`, `@/lib/prisma`, `bcryptjs`, `next/navigation` to cover `changePassword`/`deleteAccount` without touching the real DB). Updated `CLAUDE.md`, `context/ai-interaction.md` (workflow step 4 now runs tests alongside build), and `context/coding-standards.md` (new Testing section; also fixed a pre-existing unclosed code fence that was swallowing the rest of the doc into a code block).
 - **2026-07-01** — Three-column items grid completed. Grid at `src/app/items/[type]/page.tsx:44` now escalates `grid-cols-1 md:grid-cols-2 xl:grid-cols-3` instead of maxing out at 2 columns. `xl` (1280px) chosen over `lg` (1024px) after checking the sidebar shell's expanded width (256px) plus page padding — `lg` left cards too cramped (~240px wide) with the sidebar open. Verified responsively in-browser at 375/800/1100/1300/1440px widths.
+- **2026-07-02** — Item detail drawer completed. Right-side slide-in drawer (shadcn `Sheet`) is now the item detail view — no separate item page. Clicking an `ItemCard` (items list) or `ItemRow` (dashboard) opens the drawer and fetches full detail on click via new `GET /api/items/[id]` (auth-scoped to the owner). Added `getItemDetail` + `ItemDetail` type to `src/lib/db/items.ts` (Dates serialized to ISO, collections flattened) with colocated unit tests (`src/lib/db/items.test.ts`). Drawer state managed by client `ItemDrawerProvider` (React context, race-safe fetch via a request-id guard) mounted in `DashboardShell`, so pages stay server components; `ItemCard`/`ItemRow` became clickable client triggers (`role="button"` + Enter/Space + focus ring). Drawer shows type icon + type/language badge, title, description, CONTENT (text/url/file branches), TAGS, COLLECTIONS, and metadata (Type/Updated/ID), plus skeleton + error states; slide-in animation added to `globals.css`. Action bar per screenshot: Copy is functional (clipboard); Favorite (yellow when active), Pin, Edit, Delete are display-only this iteration (mutations deferred). Left the Radix dev-only `aria-describedby` warning as-is (consistent with the existing mobile-nav Sheet). Verified in-browser across command/snippet/link items; lint + build + 21 tests pass.
