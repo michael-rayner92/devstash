@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getItemDetail } from "@/lib/db/items"
+import { getItemDetail, updateItem } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     item: {
       findFirst: vi.fn(),
+      update: vi.fn(),
     },
   },
 }))
@@ -13,7 +14,10 @@ vi.mock("@/lib/prisma", () => ({
 // Prisma's generated method types are complex overloaded generics that don't
 // play well with vi.mocked(); narrow to the shape this test actually needs.
 const mockedPrisma = prisma as unknown as {
-  item: { findFirst: ReturnType<typeof vi.fn> }
+  item: {
+    findFirst: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
+  }
 }
 
 const ITEM_ROW = {
@@ -87,5 +91,60 @@ describe("getItemDetail", () => {
       ],
       collections: [{ id: "col-1", name: "Shell Toolbox" }],
     })
+  })
+})
+
+describe("updateItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const UPDATE_DATA = {
+    title: "Updated title",
+    description: null,
+    content: "echo hi",
+    url: null,
+    language: "bash",
+    tags: ["git", "shell"],
+  }
+
+  it("returns null and skips the write when the item is not owned by the user", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue(null)
+
+    const result = await updateItem("user-1", "item-x", UPDATE_DATA)
+
+    expect(result).toBeNull()
+    expect(mockedPrisma.item.update).not.toHaveBeenCalled()
+  })
+
+  it("replaces tags (clear + connect-or-create) scoped to the user and returns the mapped detail", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ id: "item-1" })
+    mockedPrisma.item.update.mockResolvedValue({ ...ITEM_ROW, title: "Updated title" })
+
+    const result = await updateItem("user-1", "item-1", UPDATE_DATA)
+
+    expect(mockedPrisma.item.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "item-1" },
+        data: expect.objectContaining({
+          title: "Updated title",
+          content: "echo hi",
+          tags: {
+            set: [],
+            connectOrCreate: [
+              {
+                where: { userId_name: { userId: "user-1", name: "git" } },
+                create: { name: "git", userId: "user-1" },
+              },
+              {
+                where: { userId_name: { userId: "user-1", name: "shell" } },
+                create: { name: "shell", userId: "user-1" },
+              },
+            ],
+          },
+        }),
+      })
+    )
+    expect(result?.title).toBe("Updated title")
   })
 })
