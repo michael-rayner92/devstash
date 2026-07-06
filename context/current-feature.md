@@ -1,27 +1,16 @@
-# Current Feature: Item Create
+# Current Feature
 
 ## Status
 
-In Progress
+
 
 ## Goals
 
-- Add new items via a modal dialog, opened from the "New Item" button in the top bar
-- Type selector supports: snippet, prompt, command, note, link
-- Fields shown based on selected type:
-  - All types: title (required), description, tags
-  - snippet/command: content, language
-  - prompt/note: content
-  - link: URL (required)
-- Server action `createItem` (Zod validation) added to `src/actions/items.ts`
-- Query function `createItem` added to `src/lib/db/items.ts`
-- Toast on success, modal closes and list refreshes
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- Use shadcn `Dialog` component (new dependency/primitive if not already installed)
-- Follow existing action/query pattern from `updateItem`/`deleteItem` (auth-scoped, `{ success, data, error }` return shape, Zod as source of truth, tag normalization)
-- File/Image types are Pro-only and out of scope for this modal (per system type tiers in project-overview.md)
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -54,3 +43,4 @@ In Progress
 - **2026-07-02** — Item detail drawer completed. Right-side slide-in drawer (shadcn `Sheet`) is now the item detail view — no separate item page. Clicking an `ItemCard` (items list) or `ItemRow` (dashboard) opens the drawer and fetches full detail on click via new `GET /api/items/[id]` (auth-scoped to the owner). Added `getItemDetail` + `ItemDetail` type to `src/lib/db/items.ts` (Dates serialized to ISO, collections flattened) with colocated unit tests (`src/lib/db/items.test.ts`). Drawer state managed by client `ItemDrawerProvider` (React context, race-safe fetch via a request-id guard) mounted in `DashboardShell`, so pages stay server components; `ItemCard`/`ItemRow` became clickable client triggers (`role="button"` + Enter/Space + focus ring). Drawer shows type icon + type/language badge, title, description, CONTENT (text/url/file branches), TAGS, COLLECTIONS, and metadata (Type/Updated/ID), plus skeleton + error states; slide-in animation added to `globals.css`. Action bar per screenshot: Copy is functional (clipboard); Favorite (yellow when active), Pin, Edit, Delete are display-only this iteration (mutations deferred). Left the Radix dev-only `aria-describedby` warning as-is (consistent with the existing mobile-nav Sheet). Verified in-browser across command/snippet/link items; lint + build + 21 tests pass.
 - **2026-07-06** — Item drawer edit mode completed. Clicking Edit flips the same `Sheet` into inline edit mode (controlled inputs, no form library); the action bar becomes Save/Cancel. Editable for all types: title (required), description, tags (comma-separated → deduped/trimmed array); type-specific: content (snippet/prompt/command/note), language (snippet/command), url (link). Added `updateItem` server action in `src/actions/items.ts` (`{ success, data, error }`, `auth()` + Zod as source of truth — title required, valid URL, tag normalization) and `updateItem` query in `src/lib/db/items.ts` (owner-scoped ownership check, tags fully replaced via `set: []` + `connectOrCreate`, returns the updated `ItemDetail`). Refactored a shared `toItemDetail` mapper + `itemDetailInclude` (DRY across `getItemDetail`/`updateItem`) and ordered tags alphabetically across all item queries so cards and drawer match. On save, the drawer refreshes from the returned detail via `onUpdated` (no second fetch) and calls `router.refresh()` for the card list; Cancel discards; Sonner toasts on success/error. `DrawerBody` gained a view/edit `mode` state keyed by item id. New `src/components/items/item-edit-form.tsx` (label-associated inputs for a11y) and `src/components/ui/textarea.tsx` (shadcn Textarea). Colocated unit tests for the action (6) and query (2). Verified in-browser (command/link edits, save/cancel, empty-title Save guard, tag dedup, invalid-URL error toast); lint + build + 29 tests pass.
 - **2026-07-06** — Delete item functionality completed. Clicking Delete in the drawer's action bar now opens a shadcn `AlertDialog` confirmation (new `@radix-ui/react-alert-dialog` dependency; `src/components/ui/alert-dialog.tsx` matches the project's existing `forwardRef` primitive style) instead of doing nothing. Added `deleteItem` server action in `src/actions/items.ts` (`{ success, error }`, `auth()` guard) and `deleteItem` query in `src/lib/db/items.ts` (owner-scoped `findFirst` ownership check before `prisma.item.delete`, returns boolean; `ItemCollection`/`Tag` links clean up via existing cascade — no manual join cleanup needed). New `src/components/items/item-delete-dialog.tsx` renders the Delete trigger + AlertDialog, using `useTransition` + the documented Radix pattern (`e.preventDefault()` in the confirm button's `onClick`) to keep the dialog open until the delete resolves. On success: Sonner success toast, dialog closes, new `onDeleted` callback (mirrors `onUpdated`) resets `ItemDrawerProvider` state to closed and invalidates in-flight fetches, `router.refresh()` drops the card from the list. On error: Sonner error toast, dialog closes, drawer stays open. Colocated unit tests for the action (5) and query (2). Verified in-browser on both the dashboard and `/items/[type]` drawers: confirm deletes and updates stats/collection counts (18→17 items, DevOps 4→3 after cascade), cancel preserves the item and keeps the drawer open, no console errors; lint + build + 36 tests pass.
+- **2026-07-06** — Item create modal completed. New "New item" modal (shadcn `Dialog`, new `src/components/ui/dialog.tsx` primitive) opens from the top-bar button and replaces the previously inert button. Type selector (snippet, prompt, command, note, link) reuses the sidebar's non-Pro item types; fields adapt per type (content+language for snippet/command, content for prompt/note, URL for link — required). Added `createItem` server action in `src/actions/items.ts` (`{ success, data, error }`, `auth()` + Zod as source of truth, URL required when type is link) and `createItem` query in `src/lib/db/items.ts` (looks up the system `ItemType` by name, maps it to the right `ContentType`, connect-or-creates tags). Server independently enforces an allow-list of creatable type names rather than trusting the client's Pro filtering. New `src/components/items/item-create-dialog.tsx` (form resets on close/reopen, Create disabled until required fields are filled). Colocated unit tests for the action (8) and query (3). Verified in-browser: created a snippet and a link end-to-end (toast, list refresh, stats update), confirmed empty-title and missing-URL guards, cleaned up test items via delete; lint + build + 47 tests pass.
