@@ -1,30 +1,16 @@
-# Current Feature: Item Drawer — Edit Mode
+# Current Feature
 
 ## Status
 
-In Progress
+
 
 ## Goals
 
-- Clicking Edit (pencil) in the drawer's action bar toggles the same drawer from view mode into **inline edit mode** (fields become editable inputs — no navigation, no separate page).
-- In edit mode the action bar is replaced with **Save** and **Cancel**.
-  - Cancel discards changes and returns to view mode.
-  - Save persists via a server action, returns to view mode, and refreshes the drawer with the updated data (no second fetch).
-- Toast on save success/error (Sonner).
-- **Editable fields (all types):** Title (text, required), Description (textarea, optional), Tags (comma-separated text → array on save).
-- **Type-specific editable fields:** Content (textarea — snippet/prompt/command/note), Language (text — snippet/command), URL (text — link).
-- **Non-editable in edit mode:** item type, collections (managed separately later), created/updated dates.
-- Zod-validated `updateItem` server action (source of truth) + `updateItem` query fn; owner-scoped.
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- **Server action:** `updateItem(itemId, data)` in `src/actions/items.ts`, `{ success, data, error }` pattern. Gets session via `auth()`, validates ownership, validates input with Zod before DB write, returns Zod errors in the `error` field for the client to display.
-- **Zod schema:** `title` non-empty trimmed string; `description`/`content`/`language` optional string|null; `url` valid URL string|null; `tags` array of trimmed non-empty strings.
-- **Query fn:** `updateItem` in `src/lib/db/items.ts`. Tag handling: disconnect all existing tags, connect-or-create the new set. Returns the updated `ItemDetail` so the drawer refreshes without a second fetch.
-- **Client:** controlled inputs + local state, no form library. Disable Save when title is empty (basic UX guard). After save, call `router.refresh()` so the underlying card list reflects the changes.
-- Content textarea is a plain textarea — the code editor comes later.
-- Builds on the existing view-mode drawer (`src/components/items/item-drawer.tsx`, `ItemDrawerProvider`). This is the first drawer action to wire up a real mutation (view-mode iteration left Favorite/Pin/Delete display-only).
-- Unit tests required for the `updateItem` server action + query fn per coding standards.
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -55,3 +41,4 @@ In Progress
 - **2026-07-01** — Vitest unit testing set up. Installed `vitest`; path aliases resolved via Vite 8's native `resolve.tsconfigPaths` (no extra plugin needed). `vitest.config.ts` scopes tests to `src/**/*.test.ts`, node environment. Added `npm run test` / `npm run test:watch`. Example tests colocated next to source: `src/lib/string-utils.test.ts`, `src/lib/relative-time.test.ts` (fake timers), and `src/actions/profile.test.ts` (mocks `@/auth`, `@/lib/prisma`, `bcryptjs`, `next/navigation` to cover `changePassword`/`deleteAccount` without touching the real DB). Updated `CLAUDE.md`, `context/ai-interaction.md` (workflow step 4 now runs tests alongside build), and `context/coding-standards.md` (new Testing section; also fixed a pre-existing unclosed code fence that was swallowing the rest of the doc into a code block).
 - **2026-07-01** — Three-column items grid completed. Grid at `src/app/items/[type]/page.tsx:44` now escalates `grid-cols-1 md:grid-cols-2 xl:grid-cols-3` instead of maxing out at 2 columns. `xl` (1280px) chosen over `lg` (1024px) after checking the sidebar shell's expanded width (256px) plus page padding — `lg` left cards too cramped (~240px wide) with the sidebar open. Verified responsively in-browser at 375/800/1100/1300/1440px widths.
 - **2026-07-02** — Item detail drawer completed. Right-side slide-in drawer (shadcn `Sheet`) is now the item detail view — no separate item page. Clicking an `ItemCard` (items list) or `ItemRow` (dashboard) opens the drawer and fetches full detail on click via new `GET /api/items/[id]` (auth-scoped to the owner). Added `getItemDetail` + `ItemDetail` type to `src/lib/db/items.ts` (Dates serialized to ISO, collections flattened) with colocated unit tests (`src/lib/db/items.test.ts`). Drawer state managed by client `ItemDrawerProvider` (React context, race-safe fetch via a request-id guard) mounted in `DashboardShell`, so pages stay server components; `ItemCard`/`ItemRow` became clickable client triggers (`role="button"` + Enter/Space + focus ring). Drawer shows type icon + type/language badge, title, description, CONTENT (text/url/file branches), TAGS, COLLECTIONS, and metadata (Type/Updated/ID), plus skeleton + error states; slide-in animation added to `globals.css`. Action bar per screenshot: Copy is functional (clipboard); Favorite (yellow when active), Pin, Edit, Delete are display-only this iteration (mutations deferred). Left the Radix dev-only `aria-describedby` warning as-is (consistent with the existing mobile-nav Sheet). Verified in-browser across command/snippet/link items; lint + build + 21 tests pass.
+- **2026-07-06** — Item drawer edit mode completed. Clicking Edit flips the same `Sheet` into inline edit mode (controlled inputs, no form library); the action bar becomes Save/Cancel. Editable for all types: title (required), description, tags (comma-separated → deduped/trimmed array); type-specific: content (snippet/prompt/command/note), language (snippet/command), url (link). Added `updateItem` server action in `src/actions/items.ts` (`{ success, data, error }`, `auth()` + Zod as source of truth — title required, valid URL, tag normalization) and `updateItem` query in `src/lib/db/items.ts` (owner-scoped ownership check, tags fully replaced via `set: []` + `connectOrCreate`, returns the updated `ItemDetail`). Refactored a shared `toItemDetail` mapper + `itemDetailInclude` (DRY across `getItemDetail`/`updateItem`) and ordered tags alphabetically across all item queries so cards and drawer match. On save, the drawer refreshes from the returned detail via `onUpdated` (no second fetch) and calls `router.refresh()` for the card list; Cancel discards; Sonner toasts on success/error. `DrawerBody` gained a view/edit `mode` state keyed by item id. New `src/components/items/item-edit-form.tsx` (label-associated inputs for a11y) and `src/components/ui/textarea.tsx` (shadcn Textarea). Colocated unit tests for the action (6) and query (2). Verified in-browser (command/link edits, save/cancel, empty-title Save guard, tag dedup, invalid-URL error toast); lint + build + 29 tests pass.
