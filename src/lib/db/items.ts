@@ -155,3 +155,21 @@ export async function updateItem(
 
   return toItemDetail(item)
 }
+
+/**
+ * Delete an item, scoped to its owner. Ownership is verified first (the
+ * `delete` where-clause can only target the unique `id`), so a user can never
+ * delete another user's item. Cascade rules clear the `ItemCollection` join
+ * rows and the implicit Tag<->Item links; the tags themselves are left intact.
+ * Returns `true` if an item was deleted, `false` if it isn't owned/found.
+ */
+export async function deleteItem(userId: string, itemId: string): Promise<boolean> {
+  const existing = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: { id: true },
+  })
+  if (!existing) return false
+
+  await prisma.item.delete({ where: { id: itemId } })
+  return true
+}

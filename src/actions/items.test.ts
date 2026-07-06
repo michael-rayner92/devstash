@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
-import { updateItem } from "@/actions/items"
+import { deleteItem, updateItem } from "@/actions/items"
 import { auth } from "@/auth"
-import { updateItem as updateItemQuery } from "@/lib/db/items"
+import {
+  deleteItem as deleteItemQuery,
+  updateItem as updateItemQuery,
+} from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
 
 vi.mock("@/auth", () => ({
@@ -11,6 +14,7 @@ vi.mock("@/auth", () => ({
 
 vi.mock("@/lib/db/items", () => ({
   updateItem: vi.fn(),
+  deleteItem: vi.fn(),
 }))
 
 const SESSION: Session = { user: { id: "user-1" }, expires: "2099-01-01T00:00:00.000Z" }
@@ -102,5 +106,56 @@ describe("updateItem (action)", () => {
     const result = await updateItem("item-1", VALID_INPUT)
 
     expect(result).toEqual({ success: true, data: UPDATED_DETAIL })
+  })
+})
+
+describe("deleteItem (action)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("rejects when there is no session", async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: false, error: "Not authenticated" })
+    expect(vi.mocked(deleteItemQuery)).not.toHaveBeenCalled()
+  })
+
+  it("passes the session user id and item id to the query", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(deleteItemQuery).mockResolvedValue(true)
+
+    await deleteItem("item-1")
+
+    expect(vi.mocked(deleteItemQuery)).toHaveBeenCalledWith("user-1", "item-1")
+  })
+
+  it("returns not found when the query reports the item is missing/unowned", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(deleteItemQuery).mockResolvedValue(false)
+
+    const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: false, error: "Item not found" })
+  })
+
+  it("returns success when the item is deleted", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(deleteItemQuery).mockResolvedValue(true)
+
+    const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: true })
+  })
+
+  it("returns a generic error when the query throws", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(deleteItemQuery).mockRejectedValue(new Error("db down"))
+
+    const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
   })
 })

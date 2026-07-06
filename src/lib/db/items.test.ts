@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getItemDetail, updateItem } from "@/lib/db/items"
+import { deleteItem, getItemDetail, updateItem } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
 
 vi.mock("@/lib/prisma", () => ({
@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", () => ({
     item: {
       findFirst: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }))
@@ -17,6 +18,7 @@ const mockedPrisma = prisma as unknown as {
   item: {
     findFirst: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
+    delete: ReturnType<typeof vi.fn>
   }
 }
 
@@ -146,5 +148,33 @@ describe("updateItem", () => {
       })
     )
     expect(result?.title).toBe("Updated title")
+  })
+})
+
+describe("deleteItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns false and skips the delete when the item is not owned by the user", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue(null)
+
+    const result = await deleteItem("user-1", "item-x")
+
+    expect(result).toBe(false)
+    expect(mockedPrisma.item.delete).not.toHaveBeenCalled()
+  })
+
+  it("deletes the item scoped to its unique id and returns true when owned", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ id: "item-1" })
+    mockedPrisma.item.delete.mockResolvedValue({ id: "item-1" })
+
+    const result = await deleteItem("user-1", "item-1")
+
+    expect(mockedPrisma.item.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "item-1", userId: "user-1" } })
+    )
+    expect(mockedPrisma.item.delete).toHaveBeenCalledWith({ where: { id: "item-1" } })
+    expect(result).toBe(true)
   })
 })

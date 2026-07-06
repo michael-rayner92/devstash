@@ -2,7 +2,7 @@
 
 import { z } from "zod"
 import { auth } from "@/auth"
-import { updateItem as updateItemQuery } from "@/lib/db/items"
+import { deleteItem as deleteItemQuery, updateItem as updateItemQuery } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
 
 export interface UpdateItemInput {
@@ -61,6 +61,27 @@ export async function updateItem(
       return { success: false, error: "Item not found" }
     }
     return { success: true, data: updated }
+  } catch {
+    return { success: false, error: "Something went wrong. Please try again." }
+  }
+}
+
+export type DeleteItemResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export async function deleteItem(itemId: string): Promise<DeleteItemResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  try {
+    const deleted = await deleteItemQuery(session.user.id, itemId)
+    if (!deleted) {
+      return { success: false, error: "Item not found" }
+    }
+    return { success: true }
   } catch {
     return { success: false, error: "Something went wrong. Please try again." }
   }

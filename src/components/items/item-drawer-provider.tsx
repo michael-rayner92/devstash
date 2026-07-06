@@ -63,6 +63,12 @@ export function ItemDrawerProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, detail }))
   }, [])
 
+  // Close the drawer after a delete succeeds and invalidate any in-flight fetch.
+  const onDeleted = useCallback(() => {
+    requestId.current++
+    setState(CLOSED)
+  }, [])
+
   return (
     <ItemDrawerContext.Provider value={{ openItem }}>
       {children}
@@ -73,6 +79,7 @@ export function ItemDrawerProvider({ children }: { children: ReactNode }) {
         error={state.error}
         onOpenChange={onOpenChange}
         onUpdated={onUpdated}
+        onDeleted={onDeleted}
       />
     </ItemDrawerContext.Provider>
   )

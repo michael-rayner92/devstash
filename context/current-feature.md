@@ -1,16 +1,28 @@
-# Current Feature
+# Current Feature: Delete Item
 
 ## Status
 
-
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a `deleteItem` server action (`src/actions/items.ts`) following the existing `{ success, error }` pattern — `auth()` guard, owner-scoped, try/catch.
+- Add a `deleteItem` query (`src/lib/db/items.ts`) that verifies ownership before deleting (return a boolean; item-scoped cascade handles tags/collection joins).
+- Wire the existing display-only Delete button in the drawer footer (`item-drawer.tsx:231`) to trigger a shadcn **AlertDialog** confirmation.
+- On confirm: delete the item, show a Sonner **success toast**, close the drawer, and refresh the list (`router.refresh()`).
+- On error: show a Sonner error toast; keep the drawer open.
+- Add the shadcn `AlertDialog` component to `src/components/ui/` (not yet installed).
+- Colocated unit tests for the new server action and query.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Confirmation UX**: shadcn `AlertDialog` (Radix-based, like the existing `Sheet`/`DropdownMenu`). Destructive-styled confirm button; cancel is the safe default. Requested explicitly by the user.
+- **Drawer close on delete**: `ItemDrawerProvider` needs an `onDeleted` callback (mirrors `onUpdated`) that resets state to `CLOSED` and invalidates in-flight fetches (`requestId.current++`), threaded through `ItemDrawer` → `DrawerBody`.
+- **Ownership**: reuse the `findFirst({ where: { id, userId } })` ownership-check pattern from `updateItem` before `prisma.item.delete`, so a user can never delete another user's item and a not-found/not-owned case returns cleanly.
+- **Cascade**: `ItemCollection` and the `Tag` relation are cleaned up by Prisma/DB on item delete — no manual join cleanup needed (verify `onDelete: Cascade` on `ItemCollection`).
+- **Refresh**: `router.refresh()` re-runs server components so the deleted card disappears from both the items list and the dashboard.
+- Delete button lives only in **view mode** (not edit mode) — matches current footer layout.
+- Follows the established toast pattern from `item-edit-form.tsx` (`toast.success` / `toast.error` from `sonner`).
 
 ## History
 

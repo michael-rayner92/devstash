@@ -11,11 +11,11 @@ import {
   Pin,
   Star,
   Tag as TagIcon,
-  Trash2,
   X,
 } from "lucide-react"
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { DeleteItemDialog } from "@/components/items/item-delete-dialog"
 import { ItemEditForm } from "@/components/items/item-edit-form"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
@@ -29,9 +29,18 @@ interface ItemDrawerProps {
   error: boolean
   onOpenChange: (open: boolean) => void
   onUpdated: (detail: ItemDetail) => void
+  onDeleted: () => void
 }
 
-export function ItemDrawer({ open, loading, detail, error, onOpenChange, onUpdated }: ItemDrawerProps) {
+export function ItemDrawer({
+  open,
+  loading,
+  detail,
+  error,
+  onOpenChange,
+  onUpdated,
+  onDeleted,
+}: ItemDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -46,7 +55,7 @@ export function ItemDrawer({ open, loading, detail, error, onOpenChange, onUpdat
           <DrawerError />
         ) : (
           // Key by id so switching to a different item resets edit mode + form state.
-          <DrawerBody key={detail.id} detail={detail} onUpdated={onUpdated} />
+          <DrawerBody key={detail.id} detail={detail} onUpdated={onUpdated} onDeleted={onDeleted} />
         )}
       </SheetContent>
     </Sheet>
@@ -66,9 +75,11 @@ function CloseButton() {
 function DrawerBody({
   detail,
   onUpdated,
+  onDeleted,
 }: {
   detail: ItemDetail
   onUpdated: (detail: ItemDetail) => void
+  onDeleted: () => void
 }) {
   const [mode, setMode] = useState<"view" | "edit">("view")
   const [copied, setCopied] = useState(false)
@@ -228,10 +239,7 @@ function DrawerBody({
 
       {/* Footer action bar */}
       <footer className="flex shrink-0 items-center justify-between border-t border-border p-4">
-        <Button variant="ghost" className="gap-2 text-destructive hover:text-destructive">
-          <Trash2 />
-          Delete
-        </Button>
+        <DeleteItemDialog itemId={detail.id} itemTitle={detail.title} onDeleted={onDeleted} />
         <Button className="gap-2" onClick={() => setMode("edit")}>
           <Pencil />
           Edit
