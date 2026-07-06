@@ -156,6 +156,61 @@ export async function updateItem(
   return toItemDetail(item)
 }
 
+export interface CreateItemData {
+  typeName: string
+  title: string
+  description: string | null
+  content: string | null
+  url: string | null
+  language: string | null
+  tags: string[]
+}
+
+// Maps a creatable type name to the Item.contentType it stores its payload under.
+const CONTENT_TYPE_BY_TYPE_NAME: Record<string, ContentType> = {
+  snippet: "text",
+  prompt: "text",
+  command: "text",
+  note: "text",
+  link: "url",
+}
+
+/**
+ * Create a new item owned by `userId`. Looks up the system `ItemType` by name
+ * so the caller only ever deals in type names; returns `null` if the name
+ * doesn't match a known system type. Tags are connect-or-created under the
+ * same user, matching `updateItem`'s tag-handling convention.
+ */
+export async function createItem(userId: string, data: CreateItemData): Promise<ItemDetail | null> {
+  const itemType = await prisma.itemType.findFirst({
+    where: { name: data.typeName, isSystem: true },
+    select: { id: true },
+  })
+  if (!itemType) return null
+
+  const item = await prisma.item.create({
+    data: {
+      title: data.title,
+      description: data.description,
+      contentType: CONTENT_TYPE_BY_TYPE_NAME[data.typeName],
+      content: data.content,
+      url: data.url,
+      language: data.language,
+      userId,
+      itemTypeId: itemType.id,
+      tags: {
+        connectOrCreate: data.tags.map((name) => ({
+          where: { userId_name: { userId, name } },
+          create: { name, userId },
+        })),
+      },
+    },
+    include: itemDetailInclude,
+  })
+
+  return toItemDetail(item)
+}
+
 /**
  * Delete an item, scoped to its owner. Ownership is verified first (the
  * `delete` where-clause can only target the unique `id`), so a user can never

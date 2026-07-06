@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
-import { deleteItem, updateItem } from "@/actions/items"
+import { createItem, deleteItem, updateItem } from "@/actions/items"
 import { auth } from "@/auth"
 import {
+  createItem as createItemQuery,
   deleteItem as deleteItemQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
@@ -13,6 +14,7 @@ vi.mock("@/auth", () => ({
 }))
 
 vi.mock("@/lib/db/items", () => ({
+  createItem: vi.fn(),
   updateItem: vi.fn(),
   deleteItem: vi.fn(),
 }))
@@ -106,6 +108,110 @@ describe("updateItem (action)", () => {
     const result = await updateItem("item-1", VALID_INPUT)
 
     expect(result).toEqual({ success: true, data: UPDATED_DETAIL })
+  })
+})
+
+describe("createItem (action)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const VALID_CREATE_INPUT = {
+    typeName: "command",
+    title: "New command",
+    description: null,
+    content: "echo hi",
+    url: null,
+    language: "bash",
+    tags: ["git", "danger"],
+  }
+
+  it("rejects when there is no session", async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: false, error: "Not authenticated" })
+    expect(vi.mocked(createItemQuery)).not.toHaveBeenCalled()
+  })
+
+  it("rejects an unknown type name", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+
+    const result = await createItem({ ...VALID_CREATE_INPUT, typeName: "file" })
+
+    expect(result.success).toBe(false)
+    expect(vi.mocked(createItemQuery)).not.toHaveBeenCalled()
+  })
+
+  it("rejects an empty title", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+
+    const result = await createItem({ ...VALID_CREATE_INPUT, title: "   " })
+
+    expect(result).toEqual({ success: false, error: "Title is required" })
+    expect(vi.mocked(createItemQuery)).not.toHaveBeenCalled()
+  })
+
+  it("requires a URL when the type is link", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+
+    const result = await createItem({ ...VALID_CREATE_INPUT, typeName: "link", url: null })
+
+    expect(result).toEqual({ success: false, error: "URL is required" })
+    expect(vi.mocked(createItemQuery)).not.toHaveBeenCalled()
+  })
+
+  it("normalizes input (trims, drops empties, dedupes tags) before calling the query", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(createItemQuery).mockResolvedValue(UPDATED_DETAIL)
+
+    await createItem({
+      typeName: "command",
+      title: "  Padded title  ",
+      description: "   ",
+      content: "keep  spacing",
+      url: null,
+      language: "  ts  ",
+      tags: ["git", " git ", "", "shell"],
+    })
+
+    expect(vi.mocked(createItemQuery)).toHaveBeenCalledWith("user-1", {
+      typeName: "command",
+      title: "Padded title",
+      description: null,
+      content: "keep  spacing",
+      language: "ts",
+      url: null,
+      tags: ["git", "shell"],
+    })
+  })
+
+  it("returns an error when the query reports an invalid type", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(createItemQuery).mockResolvedValue(null)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: false, error: "Invalid item type" })
+  })
+
+  it("returns the created detail on success", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(createItemQuery).mockResolvedValue(UPDATED_DETAIL)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: true, data: UPDATED_DETAIL })
+  })
+
+  it("returns a generic error when the query throws", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(createItemQuery).mockRejectedValue(new Error("db down"))
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
   })
 })
 

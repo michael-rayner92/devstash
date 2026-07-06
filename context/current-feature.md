@@ -1,16 +1,27 @@
-# Current Feature
+# Current Feature: Item Create
 
 ## Status
 
-
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add new items via a modal dialog, opened from the "New Item" button in the top bar
+- Type selector supports: snippet, prompt, command, note, link
+- Fields shown based on selected type:
+  - All types: title (required), description, tags
+  - snippet/command: content, language
+  - prompt/note: content
+  - link: URL (required)
+- Server action `createItem` (Zod validation) added to `src/actions/items.ts`
+- Query function `createItem` added to `src/lib/db/items.ts`
+- Toast on success, modal closes and list refreshes
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Use shadcn `Dialog` component (new dependency/primitive if not already installed)
+- Follow existing action/query pattern from `updateItem`/`deleteItem` (auth-scoped, `{ success, data, error }` return shape, Zod as source of truth, tag normalization)
+- File/Image types are Pro-only and out of scope for this modal (per system type tiers in project-overview.md)
 
 ## History
 

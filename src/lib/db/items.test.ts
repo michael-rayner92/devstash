@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { deleteItem, getItemDetail, updateItem } from "@/lib/db/items"
+import { createItem, deleteItem, getItemDetail, updateItem } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     item: {
       findFirst: vi.fn(),
+      create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+    },
+    itemType: {
+      findFirst: vi.fn(),
     },
   },
 }))
@@ -17,8 +21,12 @@ vi.mock("@/lib/prisma", () => ({
 const mockedPrisma = prisma as unknown as {
   item: {
     findFirst: ReturnType<typeof vi.fn>
+    create: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
     delete: ReturnType<typeof vi.fn>
+  }
+  itemType: {
+    findFirst: ReturnType<typeof vi.fn>
   }
 }
 
@@ -148,6 +156,76 @@ describe("updateItem", () => {
       })
     )
     expect(result?.title).toBe("Updated title")
+  })
+})
+
+describe("createItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const CREATE_DATA = {
+    typeName: "command",
+    title: "New command",
+    description: null,
+    content: "echo hi",
+    url: null,
+    language: "bash",
+    tags: ["git", "shell"],
+  }
+
+  it("returns null and skips the write when the type name doesn't match a known system type", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue(null)
+
+    const result = await createItem("user-1", { ...CREATE_DATA, typeName: "bogus" })
+
+    expect(result).toBeNull()
+    expect(mockedPrisma.item.create).not.toHaveBeenCalled()
+  })
+
+  it("maps the type name to its contentType, connect-or-creates tags scoped to the user, and returns the mapped detail", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue({ id: "type-command" })
+    mockedPrisma.item.create.mockResolvedValue({ ...ITEM_ROW, title: "New command" })
+
+    const result = await createItem("user-1", CREATE_DATA)
+
+    expect(mockedPrisma.itemType.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { name: "command", isSystem: true } })
+    )
+    expect(mockedPrisma.item.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "New command",
+          contentType: "text",
+          userId: "user-1",
+          itemTypeId: "type-command",
+          tags: {
+            connectOrCreate: [
+              {
+                where: { userId_name: { userId: "user-1", name: "git" } },
+                create: { name: "git", userId: "user-1" },
+              },
+              {
+                where: { userId_name: { userId: "user-1", name: "shell" } },
+                create: { name: "shell", userId: "user-1" },
+              },
+            ],
+          },
+        }),
+      })
+    )
+    expect(result?.title).toBe("New command")
+  })
+
+  it("maps the link type to a url contentType", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue({ id: "type-link" })
+    mockedPrisma.item.create.mockResolvedValue({ ...ITEM_ROW, contentType: "url" })
+
+    await createItem("user-1", { ...CREATE_DATA, typeName: "link", url: "https://example.com" })
+
+    expect(mockedPrisma.item.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ contentType: "url" }) })
+    )
   })
 })
 
