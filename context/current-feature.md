@@ -1,16 +1,30 @@
-# Current Feature
+# Current Feature: Item Drawer — Edit Mode
 
 ## Status
 
-
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Clicking Edit (pencil) in the drawer's action bar toggles the same drawer from view mode into **inline edit mode** (fields become editable inputs — no navigation, no separate page).
+- In edit mode the action bar is replaced with **Save** and **Cancel**.
+  - Cancel discards changes and returns to view mode.
+  - Save persists via a server action, returns to view mode, and refreshes the drawer with the updated data (no second fetch).
+- Toast on save success/error (Sonner).
+- **Editable fields (all types):** Title (text, required), Description (textarea, optional), Tags (comma-separated text → array on save).
+- **Type-specific editable fields:** Content (textarea — snippet/prompt/command/note), Language (text — snippet/command), URL (text — link).
+- **Non-editable in edit mode:** item type, collections (managed separately later), created/updated dates.
+- Zod-validated `updateItem` server action (source of truth) + `updateItem` query fn; owner-scoped.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Server action:** `updateItem(itemId, data)` in `src/actions/items.ts`, `{ success, data, error }` pattern. Gets session via `auth()`, validates ownership, validates input with Zod before DB write, returns Zod errors in the `error` field for the client to display.
+- **Zod schema:** `title` non-empty trimmed string; `description`/`content`/`language` optional string|null; `url` valid URL string|null; `tags` array of trimmed non-empty strings.
+- **Query fn:** `updateItem` in `src/lib/db/items.ts`. Tag handling: disconnect all existing tags, connect-or-create the new set. Returns the updated `ItemDetail` so the drawer refreshes without a second fetch.
+- **Client:** controlled inputs + local state, no form library. Disable Save when title is empty (basic UX guard). After save, call `router.refresh()` so the underlying card list reflects the changes.
+- Content textarea is a plain textarea — the code editor comes later.
+- Builds on the existing view-mode drawer (`src/components/items/item-drawer.tsx`, `ItemDrawerProvider`). This is the first drawer action to wire up a real mutation (view-mode iteration left Favorite/Pin/Delete display-only).
+- Unit tests required for the `updateItem` server action + query fn per coding standards.
 
 ## History
 

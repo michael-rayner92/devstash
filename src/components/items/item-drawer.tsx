@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { ItemEditForm } from "@/components/items/item-edit-form"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
 import { cn } from "@/lib/utils"
@@ -27,9 +28,10 @@ interface ItemDrawerProps {
   detail: ItemDetail | null
   error: boolean
   onOpenChange: (open: boolean) => void
+  onUpdated: (detail: ItemDetail) => void
 }
 
-export function ItemDrawer({ open, loading, detail, error, onOpenChange }: ItemDrawerProps) {
+export function ItemDrawer({ open, loading, detail, error, onOpenChange, onUpdated }: ItemDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -43,7 +45,8 @@ export function ItemDrawer({ open, loading, detail, error, onOpenChange }: ItemD
         ) : error || !detail ? (
           <DrawerError />
         ) : (
-          <DrawerBody detail={detail} />
+          // Key by id so switching to a different item resets edit mode + form state.
+          <DrawerBody key={detail.id} detail={detail} onUpdated={onUpdated} />
         )}
       </SheetContent>
     </Sheet>
@@ -60,11 +63,31 @@ function CloseButton() {
   )
 }
 
-function DrawerBody({ detail }: { detail: ItemDetail }) {
+function DrawerBody({
+  detail,
+  onUpdated,
+}: {
+  detail: ItemDetail
+  onUpdated: (detail: ItemDetail) => void
+}) {
+  const [mode, setMode] = useState<"view" | "edit">("view")
   const [copied, setCopied] = useState(false)
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const copyText = detail.content ?? detail.url ?? ""
+
+  if (mode === "edit") {
+    return (
+      <ItemEditForm
+        detail={detail}
+        onCancel={() => setMode("view")}
+        onSaved={(updated) => {
+          onUpdated(updated)
+          setMode("view")
+        }}
+      />
+    )
+  }
 
   async function handleCopy() {
     if (!copyText) return
@@ -209,7 +232,7 @@ function DrawerBody({ detail }: { detail: ItemDetail }) {
           <Trash2 />
           Delete
         </Button>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setMode("edit")}>
           <Pencil />
           Edit
         </Button>

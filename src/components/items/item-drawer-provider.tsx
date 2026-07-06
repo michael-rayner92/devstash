@@ -57,6 +57,12 @@ export function ItemDrawerProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, open }))
   }, [])
 
+  // Replace the drawer's detail after an in-drawer edit saves, so view mode
+  // reflects the change without a second fetch.
+  const onUpdated = useCallback((detail: ItemDetail) => {
+    setState((prev) => ({ ...prev, detail }))
+  }, [])
+
   return (
     <ItemDrawerContext.Provider value={{ openItem }}>
       {children}
@@ -66,6 +72,7 @@ export function ItemDrawerProvider({ children }: { children: ReactNode }) {
         detail={state.detail}
         error={state.error}
         onOpenChange={onOpenChange}
+        onUpdated={onUpdated}
       />
     </ItemDrawerContext.Provider>
   )
