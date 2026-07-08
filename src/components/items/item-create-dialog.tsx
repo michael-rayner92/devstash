@@ -16,14 +16,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { CodeEditor } from "@/components/ui/code-editor"
 import { iconMap } from "@/lib/icon-map"
+import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import type { SidebarItemType } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
-
-// Item types that carry a text body / a language / a URL, respectively.
-const CONTENT_TYPES = new Set(["snippet", "prompt", "command", "note"])
-const LANGUAGE_TYPES = new Set(["snippet", "command"])
 
 const EMPTY_FORM = {
   title: "",
@@ -48,7 +46,8 @@ export function ItemCreateDialog({ itemTypes, trigger }: ItemCreateDialogProps) 
   const [creating, setCreating] = useState(false)
 
   const showContent = CONTENT_TYPES.has(typeName)
-  const showLanguage = LANGUAGE_TYPES.has(typeName)
+  const isCode = isCodeType(typeName)
+  const showLanguage = isCode
   const showUrl = typeName === "link"
   const canCreate = form.title.trim().length > 0 && (!showUrl || form.url.trim().length > 0) && !creating
 
@@ -139,14 +138,24 @@ export function ItemCreateDialog({ itemTypes, trigger }: ItemCreateDialogProps) 
 
           {showContent && (
             <Field label="Content" htmlFor="create-content">
-              <Textarea
-                id="create-content"
-                value={form.content}
-                onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                rows={6}
-                className="font-mono"
-                placeholder="Item content"
-              />
+              {isCode ? (
+                <CodeEditor
+                  id="create-content"
+                  ariaLabel="Content"
+                  value={form.content}
+                  language={form.language}
+                  onChange={(next) => setForm((f) => ({ ...f, content: next }))}
+                />
+              ) : (
+                <Textarea
+                  id="create-content"
+                  value={form.content}
+                  onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+                  rows={6}
+                  className="font-mono"
+                  placeholder="Item content"
+                />
+              )}
             </Field>
           )}
 

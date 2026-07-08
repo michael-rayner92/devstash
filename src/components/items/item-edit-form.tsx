@@ -8,14 +8,12 @@ import { File, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { CodeEditor } from "@/components/ui/code-editor"
 import { SheetClose } from "@/components/ui/sheet"
 import { iconMap } from "@/lib/icon-map"
+import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
 import type { ItemDetail } from "@/lib/db/items"
-
-// Item types that carry a text body / a language / a URL, respectively.
-const CONTENT_TYPES = new Set(["snippet", "prompt", "command", "note"])
-const LANGUAGE_TYPES = new Set(["snippet", "command"])
 
 interface ItemEditFormProps {
   detail: ItemDetail
@@ -35,7 +33,8 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
 
   const typeName = detail.itemType.name
   const showContent = CONTENT_TYPES.has(typeName)
-  const showLanguage = LANGUAGE_TYPES.has(typeName)
+  const isCode = isCodeType(typeName)
+  const showLanguage = isCode
   const showUrl = typeName === "link"
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
@@ -106,14 +105,24 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
 
         {showContent && (
           <Field label="Content" htmlFor="edit-content">
-            <Textarea
-              id="edit-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={8}
-              className="font-mono"
-              placeholder="Item content"
-            />
+            {isCode ? (
+              <CodeEditor
+                id="edit-content"
+                ariaLabel="Content"
+                value={content}
+                language={language}
+                onChange={setContent}
+              />
+            ) : (
+              <Textarea
+                id="edit-content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={8}
+                className="font-mono"
+                placeholder="Item content"
+              />
+            )}
           </Field>
         )}
 

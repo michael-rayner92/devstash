@@ -15,9 +15,11 @@ import {
 } from "lucide-react"
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { CodeEditor } from "@/components/ui/code-editor"
 import { DeleteItemDialog } from "@/components/items/item-delete-dialog"
 import { ItemEditForm } from "@/components/items/item-edit-form"
 import { iconMap } from "@/lib/icon-map"
+import { isCodeType } from "@/lib/item-fields"
 import { relativeTime } from "@/lib/relative-time"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
@@ -86,6 +88,8 @@ function DrawerBody({
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const copyText = detail.content ?? detail.url ?? ""
+  // Code types render in the CodeEditor, which carries its own copy button.
+  const isCode = isCodeType(detail.itemType.name)
 
   if (mode === "edit") {
     return (
@@ -171,18 +175,21 @@ function DrawerBody({
         <section>
           <div className="mb-2 flex items-center justify-between">
             <SectionLabel>Content</SectionLabel>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 text-muted-foreground"
-              onClick={handleCopy}
-              disabled={!copyText}
-            >
-              {copied ? <Check className="text-emerald-400" /> : <Copy />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
+            {/* Code types show copy in the editor header; others get a section-level button. */}
+            {!isCode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-muted-foreground"
+                onClick={handleCopy}
+                disabled={!copyText}
+              >
+                {copied ? <Check className="text-emerald-400" /> : <Copy />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            )}
           </div>
-          <ContentBlock detail={detail} />
+          <ContentBlock detail={detail} isCode={isCode} />
         </section>
 
         {/* Tags */}
@@ -249,7 +256,7 @@ function DrawerBody({
   )
 }
 
-function ContentBlock({ detail }: { detail: ItemDetail }) {
+function ContentBlock({ detail, isCode }: { detail: ItemDetail; isCode: boolean }) {
   if (detail.contentType === "url" && detail.url) {
     return (
       <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -280,6 +287,9 @@ function ContentBlock({ detail }: { detail: ItemDetail }) {
   }
 
   if (detail.content) {
+    if (isCode) {
+      return <CodeEditor readOnly value={detail.content} language={detail.language} />
+    }
     return (
       <pre className="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-sm font-mono whitespace-pre-wrap wrap-break-word text-foreground">
         {detail.content}
