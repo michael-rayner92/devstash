@@ -35,13 +35,19 @@ const EMPTY_FORM = {
 interface ItemCreateDialogProps {
   itemTypes: SidebarItemType[]
   trigger: ReactNode
+  /** Preselect this type when opening. Ignored if it isn't a creatable type. */
+  initialType?: string
 }
 
-export function ItemCreateDialog({ itemTypes, trigger }: ItemCreateDialogProps) {
+export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreateDialogProps) {
   const router = useRouter()
   const creatableTypes = itemTypes.filter((type) => !type.isPro)
+  const defaultType =
+    (initialType && creatableTypes.some((type) => type.name === initialType)
+      ? initialType
+      : creatableTypes[0]?.name) ?? ""
   const [open, setOpen] = useState(false)
-  const [typeName, setTypeName] = useState(creatableTypes[0]?.name ?? "")
+  const [typeName, setTypeName] = useState(defaultType)
   const [form, setForm] = useState(EMPTY_FORM)
   const [creating, setCreating] = useState(false)
 
@@ -55,7 +61,7 @@ export function ItemCreateDialog({ itemTypes, trigger }: ItemCreateDialogProps) 
     setOpen(next)
     if (!next) {
       setForm(EMPTY_FORM)
-      setTypeName(creatableTypes[0]?.name ?? "")
+      setTypeName(defaultType)
     }
   }
 
