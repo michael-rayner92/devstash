@@ -5,6 +5,7 @@ import { useState } from "react"
 import {
   Check,
   Copy,
+  Download,
   File,
   Library,
   Pencil,
@@ -92,6 +93,8 @@ function DrawerBody({
   // Code and markdown types render in editors that carry their own copy button.
   const isCode = isCodeType(detail.itemType.name)
   const isMarkdown = isMarkdownType(detail.itemType.name)
+  // File types have no copyable text — they get a download button instead.
+  const isFile = detail.contentType === "file"
 
   if (mode === "edit") {
     return (
@@ -177,8 +180,9 @@ function DrawerBody({
         <section>
           <div className="mb-2 flex items-center justify-between">
             <SectionLabel>Content</SectionLabel>
-            {/* Code/markdown types show copy in the editor header; others get a section-level button. */}
-            {!isCode && !isMarkdown && (
+            {/* Code/markdown editors carry their own copy button; file types
+                get a download button instead of copy. */}
+            {!isCode && !isMarkdown && !isFile && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -283,14 +287,34 @@ function ContentBlock({
   }
 
   if (detail.contentType === "file") {
+    const isImage = detail.itemType.name === "image"
+    const downloadUrl = `/api/items/${detail.id}/download`
     return (
-      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
-        <File className="h-5 w-5 shrink-0 text-muted-foreground" />
-        <div className="min-w-0">
-          <p className="truncate text-sm text-foreground">{detail.fileName ?? "File"}</p>
-          {detail.fileSize != null && (
-            <p className="text-xs text-muted-foreground">{formatBytes(detail.fileSize)}</p>
-          )}
+      <div className="space-y-3">
+        {isImage && (
+          <a href={downloadUrl} target="_blank" rel="noreferrer" className="block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={downloadUrl}
+              alt={detail.fileName ?? detail.title}
+              className="max-h-80 w-full rounded-lg border border-border bg-muted/30 object-contain"
+            />
+          </a>
+        )}
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+          <File className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm text-foreground">{detail.fileName ?? "File"}</p>
+            {detail.fileSize != null && (
+              <p className="text-xs text-muted-foreground">{formatBytes(detail.fileSize)}</p>
+            )}
+          </div>
+          <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5">
+            <a href={`${downloadUrl}?download=1`}>
+              <Download className="h-4 w-4" />
+              Download
+            </a>
+          </Button>
         </div>
       </div>
     )

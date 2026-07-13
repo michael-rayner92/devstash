@@ -32,8 +32,9 @@ export default async function ItemsByTypePage({
   const items = dbUser ? await getItemsByType(dbUser.id, typeName) : []
   const Icon = iconMap[itemType.icon] ?? File
 
-  // Only offer creation for non-Pro (creatable) types — file/image aren't creatable.
-  const isCreatable = itemTypes.some((t) => t.name === typeName && !t.isPro)
+  // All system types are creatable (file/image upload to R2; the rest carry a
+  // text/url body).
+  const isCreatable = itemTypes.some((t) => t.name === typeName)
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">

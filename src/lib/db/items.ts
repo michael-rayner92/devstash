@@ -173,6 +173,8 @@ const CONTENT_TYPE_BY_TYPE_NAME: Record<string, ContentType> = {
   command: "text",
   note: "text",
   link: "url",
+  file: "file",
+  image: "file",
 }
 
 /**
@@ -211,20 +213,89 @@ export async function createItem(userId: string, data: CreateItemData): Promise<
   return toItemDetail(item)
 }
 
+export interface CreateFileItemData {
+  typeName: "file" | "image"
+  title: string
+  description: string | null
+  fileUrl: string
+  fileName: string
+  fileSize: number
+  tags: string[]
+}
+
+/**
+ * Create a file-backed item (file/image) owned by `userId`. The payload lives
+ * in R2 already; this just records its URL/name/size against a `file`
+ * contentType. Returns `null` if the type name isn't a known system type.
+ */
+export async function createFileItem(
+  userId: string,
+  data: CreateFileItemData
+): Promise<ItemDetail | null> {
+  const itemType = await prisma.itemType.findFirst({
+    where: { name: data.typeName, isSystem: true },
+    select: { id: true },
+  })
+  if (!itemType) return null
+
+  const item = await prisma.item.create({
+    data: {
+      title: data.title,
+      description: data.description,
+      contentType: "file",
+      fileUrl: data.fileUrl,
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      userId,
+      itemTypeId: itemType.id,
+      tags: {
+        connectOrCreate: data.tags.map((name) => ({
+          where: { userId_name: { userId, name } },
+          create: { name, userId },
+        })),
+      },
+    },
+    include: itemDetailInclude,
+  })
+
+  return toItemDetail(item)
+}
+
+/**
+ * Fetch the stored file URL + name for an item, scoped to its owner. Used by
+ * the download proxy to locate the R2 object. Returns `null` when the item
+ * isn't owned/found or has no file.
+ */
+export async function getItemFileForDownload(
+  userId: string,
+  itemId: string
+): Promise<{ fileUrl: string; fileName: string | null } | null> {
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: { fileUrl: true, fileName: true },
+  })
+  if (!item?.fileUrl) return null
+  return { fileUrl: item.fileUrl, fileName: item.fileName }
+}
+
 /**
  * Delete an item, scoped to its owner. Ownership is verified first (the
  * `delete` where-clause can only target the unique `id`), so a user can never
  * delete another user's item. Cascade rules clear the `ItemCollection` join
  * rows and the implicit Tag<->Item links; the tags themselves are left intact.
- * Returns `true` if an item was deleted, `false` if it isn't owned/found.
+ * Returns the deleted item's `fileUrl` (so the caller can clean up R2), or
+ * `null` if the item isn't owned/found.
  */
-export async function deleteItem(userId: string, itemId: string): Promise<boolean> {
+export async function deleteItem(
+  userId: string,
+  itemId: string
+): Promise<{ fileUrl: string | null } | null> {
   const existing = await prisma.item.findFirst({
     where: { id: itemId, userId },
-    select: { id: true },
+    select: { id: true, fileUrl: true },
   })
-  if (!existing) return false
+  if (!existing) return null
 
   await prisma.item.delete({ where: { id: itemId } })
-  return true
+  return { fileUrl: existing.fileUrl }
 }

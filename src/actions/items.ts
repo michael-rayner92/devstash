@@ -8,6 +8,7 @@ import {
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
+import { deleteFromR2, objectKeyFromUrl } from "@/lib/r2"
 
 export interface UpdateItemInput {
   title: string
@@ -145,6 +146,17 @@ export async function deleteItem(itemId: string): Promise<DeleteItemResult> {
     if (!deleted) {
       return { success: false, error: "Item not found" }
     }
+
+    // Best-effort R2 cleanup: the DB row is already gone, so a failed object
+    // delete only leaves an orphan — never surface it as a user-facing error.
+    if (deleted.fileUrl) {
+      try {
+        await deleteFromR2(objectKeyFromUrl(deleted.fileUrl))
+      } catch (err) {
+        console.error("Failed to delete R2 object for item", itemId, err)
+      }
+    }
+
     return { success: true }
   } catch {
     return { success: false, error: "Something went wrong. Please try again." }

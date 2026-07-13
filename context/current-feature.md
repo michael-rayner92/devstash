@@ -1,16 +1,47 @@
-# Current Feature
+# Current Feature: File & Image Upload with Cloudflare R2
 
 ## Status
 
-
+In Progress
 
 ## Goals
 
 <!-- Bullet points of what success looks like -->
 
+- Create an upload API route that stores files/images in Cloudflare R2
+- Keep all Prisma/DB functions in `src/lib/db/items.ts`
+- Build a `FileUpload` component with drag-and-drop support
+- Update the create item modal to use `FileUpload` for file/image types
+- Delete files from R2 when their items are deleted
+- Create a download proxy API route (avoids CORS issues)
+- Add a download button in `ItemDrawer` for file types
+- Show an upload progress indicator
+- Display an image preview for images, and file info for files
+
 ## Notes
 
 <!-- Additional context, constraints, or details from spec -->
+
+Source spec: `context/features/file-image-spec.md`
+
+### File Constraints
+
+| Type   | Max Size | Extensions                                                                      |
+| ------ | -------- | ------------------------------------------------------------------------------- |
+| Images | 5 MB     | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`                                 |
+| Files  | 10 MB    | `.pdf`, `.txt`, `.md`, `.json`, `.yaml`, `.yml`, `.xml`, `.csv`, `.toml`, `.ini` |
+
+### Allowed MIME Types
+
+**Images:** `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/svg+xml`
+
+**Files:** `application/pdf`, `text/plain`, `text/markdown`, `application/json`, `application/x-yaml`, `text/yaml`, `application/xml`, `text/xml`, `text/csv`, `application/toml`, `text/plain` (for `.ini`)
+
+### Implementation Considerations
+
+- File & image uploads are gated behind the Pro tier per the project spec, but all features are unlocked during development.
+- Item `contentType` for file/image is `file`; the schema already has `fileUrl`, `fileName`, `fileSize` columns.
+- R2 is S3-compatible — will need R2 bucket credentials in env (`.env.example` already has a pending change on this branch).
 
 ## History
 
