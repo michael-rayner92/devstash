@@ -6,6 +6,7 @@ import { getItemTypeByName, getItemsByType } from "@/lib/db/items"
 import { getSidebarItemTypes } from "@/lib/db/sidebar"
 import { iconMap } from "@/lib/icon-map"
 import { Button } from "@/components/ui/button"
+import { ImageCard } from "@/components/items/image-card"
 import { ItemCard } from "@/components/items/item-card"
 import { ItemCreateDialog } from "@/components/items/item-create-dialog"
 
@@ -71,9 +72,13 @@ export default async function ItemsByTypePage({
 
       {items.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {items.map((item) => (
-            <ItemCard key={item.id} item={item} />
-          ))}
+          {items.map((item) =>
+            typeName === "image" ? (
+              <ImageCard key={item.id} item={item} />
+            ) : (
+              <ItemCard key={item.id} item={item} />
+            )
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">

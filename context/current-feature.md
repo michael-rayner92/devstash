@@ -1,16 +1,22 @@
-# Current Feature
+# Current Feature: Image Gallery View
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Create an image thumbnail card component to replace the regular `ItemCard` on the images page
+- Render images as a 3-column grid/gallery
+- Display each image thumbnail at 16:9 aspect ratio (`aspect-video`)
+- Use `object-cover` so the thumbnail fills the card (edges may crop)
+- Add a subtle hover zoom effect (5% scale, 300ms transition)
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Spec: `context/features/image-display-spec.md`
+- Image bytes are served through the auth-scoped proxy `GET /api/items/[id]/download` (inline by default) — thumbnails should use that as the `<img>` src, same as the drawer preview
+- Applies to image items only; other item types keep the existing `ItemCard`
 
 ## History
 
