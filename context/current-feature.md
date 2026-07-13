@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: File List View
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- `/items/files` displays as a single-column list (like Google Drive/Dropbox) instead of grid cards
+- Each row shows: file icon (by extension), file name, file size, upload date, download button
+- Row hover highlight
+- Clicking a row opens the ItemDrawer
+- Download button triggers direct download and stops click propagation (so it doesn't also open the drawer)
+- Responsive: stack row info vertically on mobile
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Source spec: `context/features/file-display-spec.md`
+- Scoped to the **file** item type only — image gallery view (`/items/images`) and other type grids are unaffected
+- Likely mirrors the existing `image-card.tsx` pattern (type-specific component swapped in on `/items/[type]/page.tsx` via a `typeName === "file"` branch), but as a list row rather than a card
+- Download button needs a file icon mapped by extension; check `src/lib/file-constraints.ts` for existing extension/MIME handling to reuse
+- Existing download proxy `GET /api/items/[id]/download` (with `?download=1` for attachment) should be reusable for the row's download button
 
 ## History
 

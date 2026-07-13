@@ -8,6 +8,7 @@ import { iconMap } from "@/lib/icon-map"
 import { Button } from "@/components/ui/button"
 import { ImageCard } from "@/components/items/image-card"
 import { ItemCard } from "@/components/items/item-card"
+import { FileListRow } from "@/components/items/file-list-row"
 import { ItemCreateDialog } from "@/components/items/item-create-dialog"
 
 export default async function ItemsByTypePage({
@@ -71,15 +72,23 @@ export default async function ItemsByTypePage({
       </div>
 
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {items.map((item) =>
-            typeName === "image" ? (
-              <ImageCard key={item.id} item={item} />
-            ) : (
-              <ItemCard key={item.id} item={item} />
-            )
-          )}
-        </div>
+        typeName === "file" ? (
+          <div className="rounded-xl border border-border">
+            {items.map((item) => (
+              <FileListRow key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {items.map((item) =>
+              typeName === "image" ? (
+                <ImageCard key={item.id} item={item} />
+              ) : (
+                <ItemCard key={item.id} item={item} />
+              )
+            )}
+          </div>
+        )
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
           <div className="mb-4 rounded-full p-3" style={{ backgroundColor: `${itemType.color}15` }}>
