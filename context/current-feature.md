@@ -1,47 +1,16 @@
-# Current Feature: File & Image Upload with Cloudflare R2
+# Current Feature
 
 ## Status
 
-In Progress
+<!-- Not Started | In Progress | Complete -->
 
 ## Goals
 
 <!-- Bullet points of what success looks like -->
 
-- Create an upload API route that stores files/images in Cloudflare R2
-- Keep all Prisma/DB functions in `src/lib/db/items.ts`
-- Build a `FileUpload` component with drag-and-drop support
-- Update the create item modal to use `FileUpload` for file/image types
-- Delete files from R2 when their items are deleted
-- Create a download proxy API route (avoids CORS issues)
-- Add a download button in `ItemDrawer` for file types
-- Show an upload progress indicator
-- Display an image preview for images, and file info for files
-
 ## Notes
 
 <!-- Additional context, constraints, or details from spec -->
-
-Source spec: `context/features/file-image-spec.md`
-
-### File Constraints
-
-| Type   | Max Size | Extensions                                                                      |
-| ------ | -------- | ------------------------------------------------------------------------------- |
-| Images | 5 MB     | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`                                 |
-| Files  | 10 MB    | `.pdf`, `.txt`, `.md`, `.json`, `.yaml`, `.yml`, `.xml`, `.csv`, `.toml`, `.ini` |
-
-### Allowed MIME Types
-
-**Images:** `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/svg+xml`
-
-**Files:** `application/pdf`, `text/plain`, `text/markdown`, `application/json`, `application/x-yaml`, `text/yaml`, `application/xml`, `text/xml`, `text/csv`, `application/toml`, `text/plain` (for `.ini`)
-
-### Implementation Considerations
-
-- File & image uploads are gated behind the Pro tier per the project spec, but all features are unlocked during development.
-- Item `contentType` for file/image is `file`; the schema already has `fileUrl`, `fileName`, `fileSize` columns.
-- R2 is S3-compatible — will need R2 bucket credentials in env (`.env.example` already has a pending change on this branch).
 
 ## History
 
@@ -78,3 +47,4 @@ Source spec: `context/features/file-image-spec.md`
 - **2026-07-09** — Code Editor (Monaco) completed. New `src/components/ui/code-editor.tsx` (Monaco via `@monaco-editor/react` v4.7.0, loaded from the default jsDelivr CDN) replaces the plain `Textarea` for **snippet and command** items across view, edit, and create modes; notes/prompts/other types keep the `Textarea`. Always-dark VS Code styling regardless of the app theme (per the spec), custom `devstash-dark` Monaco theme with a slim translucent scrollbar, macOS traffic-light header carrying a language label (hidden when empty) + Copy button, fluid height via `getContentHeight()`/`onDidContentSizeChange` clamped 120–400px. TS/JS semantic + syntax validation disabled in `beforeMount` so standalone snippets don't show false "cannot find module" squiggles. Extracted shared field-visibility logic to `src/lib/item-fields.ts` (`CONTENT_TYPES`/`LANGUAGE_TYPES`/`isCodeType`, removing the sets previously duplicated in the edit form + create dialog) and language normalization to `src/lib/code-language.ts`; both unit tested (+9 tests). Drawer view mode drops its section-level Copy for code types (the editor header provides it). Known caveat: Monaco logs a benign `Uncaught (in promise) Canceled` rejection from its own dispose path on unmount (drawer/dialog close) — functionality unaffected, left as-is (consistent with the existing Radix `aria-describedby` dev artifact). Verified in-browser across snippet/command view+edit+create, including an end-to-end create that persisted Monaco content; lint + build + 56 tests pass. Committed as `feat: add Monaco code editor for snippets and commands` (`cd551ff`).
 - **2026-07-09** — Type-scoped create button added. Each `/items/[type]` page now shows a "New {type}" button that opens the create dialog with that type preselected, via a new optional `initialType` prop on `ItemCreateDialog` (falls back to the first creatable type if the given one isn't creatable, and resets to it on close). Rendered only for creatable (non-Pro) types — file/image pages show no button — gated by fetching `getSidebarItemTypes()` on the page. Styled as an outlined, type-colored button (border + text + icon in the type's color) to differentiate it from the solid neutral top-bar "New item" button directly above it. Verified in-browser (snippet=blue and command=orange preselect correctly; file page has no button); lint + build pass. Committed as `feat: add type-scoped create button to item type pages` (`5cd6e78`).
 - **2026-07-13** — Markdown Editor completed. New `src/components/ui/markdown-editor.tsx` (`react-markdown` v10 + `remark-gfm` v4) — a tabbed Write/Preview editor that replaces the plain `Textarea` for **note and prompt** items across create, edit, and view; snippets/commands keep the Monaco `CodeEditor`, and any other content type still falls back to `Textarea`. Always-dark chrome matching the code editor (`#1e1e1e` body / `#2d2d2d` header) with a header Copy button and Write/Preview tabs; readonly mode (drawer view) shows only the Preview tab, edit mode defaults to Write. Write is an auto-growing monospace textarea; both Write and Preview are fluid-height clamped 120–400px, scrolling beyond. GFM support verified end-to-end: headings, bold/italic, inline code, links, ordered/unordered/nested/task lists, blockquotes, fenced code blocks, and tables. Preview styled via a `.markdown-preview` block in `globals.css` (unlayered so it beats Tailwind's preflight reset — layered rules were the initial bug: they lost to preflight until moved unlayered). Extended `src/lib/item-fields.ts` with `MARKDOWN_TYPES` (note, prompt) + `isMarkdownType`, and wired the three integration points (`item-create-dialog.tsx`, `item-edit-form.tsx`, `item-drawer.tsx` — the drawer's section-level Copy is now hidden for markdown too, since the editor carries its own). Colocated unit tests for the new helper (+3, including a disjoint/coverage check that code and markdown types partition all content types). Gotcha found during verification: a running Turbopack dev server served a stale cached `globals.css` (edited before the session started, so no HMR fired) — a `touch` didn't force recompile; clearing `.next` and restarting did. Verified in-browser (note create → view → edit → delete; prompt uses the editor; snippet still uses Monaco with no regression; no app console errors); lint + build + 59 tests pass. Committed as `feat: add markdown editor for notes and prompts` (`a4918ab`).
+- **2026-07-13** — File & Image Upload with Cloudflare R2 completed. Uploads file/image items to R2 via the S3-compatible API and serves them back through an auth-scoped proxy. New `src/lib/r2.ts` (lazy, memoized `@aws-sdk/client-s3` client — `uploadToR2`/`getFromR2`/`deleteFromR2` + `publicUrl`/`objectKeyFromUrl`; throws only when used without `R2_*` env, so build stays safe) and `src/lib/file-constraints.ts` (per-kind size/extension rules — images 5 MB, files 10 MB — plus an extension→MIME map). **Validation is by extension + size, not browser MIME**, since dev-doc formats (`.md`/`.yaml`/`.toml`/`.ini`/`.csv`) arrive with empty/mislabeled MIME; the MIME map only drives the served `Content-Type`. `POST /api/upload` (Node runtime, own `auth()` guard — the proxy matcher excludes `/api`) validates → uploads under an owner-scoped key `${userId}/${randomUUID()}${ext}` → `createFileItem`, returning the created `ItemDetail` so the client mirrors the text/url create flow. `GET /api/items/[id]/download` streams bytes via `transformToByteArray` with `X-Content-Type-Options: nosniff` and `Cache-Control: private, max-age=3600` — inline by default (used as the `<img>` src for image previews), `?download=1` forces attachment. In `src/lib/db/items.ts`: added `createFileItem` (contentType `file`) and `getItemFileForDownload`, and **changed `deleteItem` to return `{ fileUrl } | null`** (was boolean) so the delete server action can best-effort remove the R2 object (a failed R2 delete only orphans, never surfaces as a user error). New `src/components/ui/file-upload.tsx` — drag-and-drop drop zone, client-side validation with Sonner errors, image thumbnail via `URL.createObjectURL` (memoized + cleanup-only revoke effect to satisfy the `set-state-in-effect` lint rule), file-info row, and an upload progress bar. Create dialog now surfaces **all 7 system types** (grid 5→4 cols) and uploads file/image via `XMLHttpRequest` for real progress events (fetch/Server Actions can't report upload progress); type pages show the create button for file/image too; the drawer renders an image preview + Download button and hides section Copy for file types. Extended `item-fields.ts` with `FILE_TYPES` + `isFileType`. Added `@aws-sdk/client-s3`; `.env.example` documents `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NAME`/`R2_PUBLIC_URL`. Tests +20 (constraints, file-item queries, delete-returns-fileUrl, action R2 cleanup incl. orphan-tolerance, `isFileType`). Caveat: the 1-hour private download cache means a deleted file's bytes can linger in the owner's own browser cache (unguessable cuid URL, own content — low risk); observed as a cache-hit 200 after delete, while a cache-busted fetch correctly 404s. Verified in-browser end-to-end (image upload → thumbnail preview loaded through the proxy; `.md` upload → correct `text/markdown` round-trip; inline + attachment downloads 200; `.png`-on-file-type rejected client-side; delete removed both DB rows and R2 objects with zero R2 errors in the server log); lint + build + 79 tests pass.
