@@ -1,7 +1,8 @@
 "use client"
 
-import type { CSSProperties, KeyboardEvent } from "react"
-import { Pin, Star, File } from "lucide-react"
+import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
+import { useState } from "react"
+import { Check, Copy, Pin, Star, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
@@ -9,15 +10,29 @@ import type { ItemWithType } from "@/lib/db/items"
 
 export function ItemCard({ item }: { item: ItemWithType }) {
   const { openItem } = useItemDrawer()
+  const [copied, setCopied] = useState(false)
   const type = item.itemType
   const Icon = iconMap[type.icon] ?? File
   const color = type.color
   const preview = item.description ?? item.content?.slice(0, 120) ?? item.url ?? ""
+  const copyText = item.content ?? item.url ?? ""
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault()
       openItem(item.id)
+    }
+  }
+
+  async function handleCopy(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+    if (!copyText) return
+    try {
+      await navigator.clipboard.writeText(copyText)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard can be unavailable (e.g. insecure context) — fail silently.
     }
   }
 
@@ -40,6 +55,20 @@ export function ItemCard({ item }: { item: ItemWithType }) {
         <div className="flex items-center gap-1.5 text-muted-foreground/60">
           {item.isPinned && <Pin className="h-3.5 w-3.5" />}
           {item.isFavorite && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+          {copyText && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label={copied ? "Copied" : "Copy content"}
+              className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
         </div>
       </div>
 
