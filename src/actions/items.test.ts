@@ -8,6 +8,7 @@ import {
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
+import { deleteFromR2 } from "@/lib/r2"
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
@@ -17,6 +18,11 @@ vi.mock("@/lib/db/items", () => ({
   createItem: vi.fn(),
   updateItem: vi.fn(),
   deleteItem: vi.fn(),
+}))
+
+vi.mock("@/lib/r2", () => ({
+  deleteFromR2: vi.fn(),
+  objectKeyFromUrl: vi.fn((url: string) => url),
 }))
 
 const SESSION: Session = { user: { id: "user-1" }, expires: "2099-01-01T00:00:00.000Z" }
@@ -231,7 +237,7 @@ describe("deleteItem (action)", () => {
 
   it("passes the session user id and item id to the query", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION)
-    vi.mocked(deleteItemQuery).mockResolvedValue(true)
+    vi.mocked(deleteItemQuery).mockResolvedValue({ fileUrl: null })
 
     await deleteItem("item-1")
 
@@ -240,16 +246,43 @@ describe("deleteItem (action)", () => {
 
   it("returns not found when the query reports the item is missing/unowned", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION)
-    vi.mocked(deleteItemQuery).mockResolvedValue(false)
+    vi.mocked(deleteItemQuery).mockResolvedValue(null)
 
     const result = await deleteItem("item-1")
 
     expect(result).toEqual({ success: false, error: "Item not found" })
   })
 
-  it("returns success when the item is deleted", async () => {
+  it("returns success and skips R2 cleanup for a text item (no fileUrl)", async () => {
     vi.mocked(auth).mockResolvedValue(SESSION)
-    vi.mocked(deleteItemQuery).mockResolvedValue(true)
+    vi.mocked(deleteItemQuery).mockResolvedValue({ fileUrl: null })
+
+    const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: true })
+    expect(vi.mocked(deleteFromR2)).not.toHaveBeenCalled()
+  })
+
+  it("deletes the R2 object when the deleted item had a file", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(deleteItemQuery).mockResolvedValue({
+      fileUrl: "https://cdn.example.com/user-1/abc.png",
+    })
+
+    const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: true })
+    expect(vi.mocked(deleteFromR2)).toHaveBeenCalledWith(
+      "https://cdn.example.com/user-1/abc.png"
+    )
+  })
+
+  it("still succeeds when R2 cleanup throws (orphan, not a user error)", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(deleteItemQuery).mockResolvedValue({
+      fileUrl: "https://cdn.example.com/user-1/abc.png",
+    })
+    vi.mocked(deleteFromR2).mockRejectedValueOnce(new Error("R2 down"))
 
     const result = await deleteItem("item-1")
 

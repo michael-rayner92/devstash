@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { createItem, deleteItem, getItemDetail, updateItem } from "@/lib/db/items"
+import {
+  createFileItem,
+  createItem,
+  deleteItem,
+  getItemDetail,
+  getItemFileForDownload,
+  updateItem,
+} from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
 
 vi.mock("@/lib/prisma", () => ({
@@ -234,17 +241,17 @@ describe("deleteItem", () => {
     vi.clearAllMocks()
   })
 
-  it("returns false and skips the delete when the item is not owned by the user", async () => {
+  it("returns null and skips the delete when the item is not owned by the user", async () => {
     mockedPrisma.item.findFirst.mockResolvedValue(null)
 
     const result = await deleteItem("user-1", "item-x")
 
-    expect(result).toBe(false)
+    expect(result).toBeNull()
     expect(mockedPrisma.item.delete).not.toHaveBeenCalled()
   })
 
-  it("deletes the item scoped to its unique id and returns true when owned", async () => {
-    mockedPrisma.item.findFirst.mockResolvedValue({ id: "item-1" })
+  it("deletes the item scoped to its unique id and returns its fileUrl when owned", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ id: "item-1", fileUrl: null })
     mockedPrisma.item.delete.mockResolvedValue({ id: "item-1" })
 
     const result = await deleteItem("user-1", "item-1")
@@ -253,6 +260,97 @@ describe("deleteItem", () => {
       expect.objectContaining({ where: { id: "item-1", userId: "user-1" } })
     )
     expect(mockedPrisma.item.delete).toHaveBeenCalledWith({ where: { id: "item-1" } })
-    expect(result).toBe(true)
+    expect(result).toEqual({ fileUrl: null })
+  })
+
+  it("returns the stored fileUrl so the caller can clean up R2", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({
+      id: "item-1",
+      fileUrl: "https://cdn.example.com/user-1/abc.png",
+    })
+    mockedPrisma.item.delete.mockResolvedValue({ id: "item-1" })
+
+    const result = await deleteItem("user-1", "item-1")
+
+    expect(result).toEqual({ fileUrl: "https://cdn.example.com/user-1/abc.png" })
+  })
+})
+
+describe("createFileItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const FILE_DATA = {
+    typeName: "image" as const,
+    title: "Logo",
+    description: null,
+    fileUrl: "https://cdn.example.com/user-1/abc.png",
+    fileName: "logo.png",
+    fileSize: 2048,
+    tags: ["brand"],
+  }
+
+  it("returns null and skips the write when the type name doesn't match a system type", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue(null)
+
+    const result = await createFileItem("user-1", FILE_DATA)
+
+    expect(result).toBeNull()
+    expect(mockedPrisma.item.create).not.toHaveBeenCalled()
+  })
+
+  it("creates a file-contentType item with the R2 file fields", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue({ id: "type-image" })
+    mockedPrisma.item.create.mockResolvedValue({ ...ITEM_ROW, contentType: "file" })
+
+    await createFileItem("user-1", FILE_DATA)
+
+    expect(mockedPrisma.itemType.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { name: "image", isSystem: true } })
+    )
+    expect(mockedPrisma.item.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          contentType: "file",
+          fileUrl: "https://cdn.example.com/user-1/abc.png",
+          fileName: "logo.png",
+          fileSize: 2048,
+          userId: "user-1",
+          itemTypeId: "type-image",
+        }),
+      })
+    )
+  })
+})
+
+describe("getItemFileForDownload", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns null when the item isn't owned/found or has no file", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue(null)
+    expect(await getItemFileForDownload("user-1", "missing")).toBeNull()
+
+    mockedPrisma.item.findFirst.mockResolvedValue({ fileUrl: null, fileName: null })
+    expect(await getItemFileForDownload("user-1", "text-item")).toBeNull()
+  })
+
+  it("returns the file url + name scoped to the owner", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({
+      fileUrl: "https://cdn.example.com/user-1/x.pdf",
+      fileName: "x.pdf",
+    })
+
+    const result = await getItemFileForDownload("user-1", "item-1")
+
+    expect(mockedPrisma.item.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "item-1", userId: "user-1" } })
+    )
+    expect(result).toEqual({
+      fileUrl: "https://cdn.example.com/user-1/x.pdf",
+      fileName: "x.pdf",
+    })
   })
 })

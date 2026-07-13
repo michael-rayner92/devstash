@@ -18,11 +18,46 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CodeEditor } from "@/components/ui/code-editor"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
+import { FileUpload } from "@/components/ui/file-upload"
 import { iconMap } from "@/lib/icon-map"
-import { CONTENT_TYPES, isCodeType, isMarkdownType } from "@/lib/item-fields"
+import { CONTENT_TYPES, isCodeType, isFileType, isMarkdownType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import type { SidebarItemType } from "@/lib/db/sidebar"
+import type { UploadKind } from "@/lib/file-constraints"
+import type { ItemDetail } from "@/lib/db/items"
 import { cn } from "@/lib/utils"
+
+type UploadResult =
+  | { ok: true; data: ItemDetail }
+  | { ok: false; error: string }
+
+// POST the file item as multipart form data via XHR so upload progress can be
+// reported (fetch/Server Actions don't expose upload progress events).
+function uploadItemFile(
+  formData: FormData,
+  onProgress: (pct: number) => void
+): Promise<UploadResult> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", "/api/upload")
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    })
+    xhr.addEventListener("load", () => {
+      try {
+        const parsed = JSON.parse(xhr.responseText)
+        if (xhr.status >= 200 && xhr.status < 300) resolve({ ok: true, data: parsed })
+        else resolve({ ok: false, error: parsed.error ?? "Upload failed" })
+      } catch {
+        resolve({ ok: false, error: "Upload failed. Please try again." })
+      }
+    })
+    xhr.addEventListener("error", () =>
+      resolve({ ok: false, error: "Upload failed. Please try again." })
+    )
+    xhr.send(formData)
+  })
+}
 
 const EMPTY_FORM = {
   title: "",
@@ -42,7 +77,9 @@ interface ItemCreateDialogProps {
 
 export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreateDialogProps) {
   const router = useRouter()
-  const creatableTypes = itemTypes.filter((type) => !type.isPro)
+  // All system types are creatable (file/image upload to R2; the rest carry a
+  // text/url body). Pro gating is unlocked during development.
+  const creatableTypes = itemTypes
   const defaultType =
     (initialType && creatableTypes.some((type) => type.name === initialType)
       ? initialType
@@ -50,24 +87,67 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
   const [open, setOpen] = useState(false)
   const [typeName, setTypeName] = useState(defaultType)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [file, setFile] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
 
+  const isFile = isFileType(typeName)
   const showContent = CONTENT_TYPES.has(typeName)
   const isCode = isCodeType(typeName)
   const isMarkdown = isMarkdownType(typeName)
   const showLanguage = isCode
   const showUrl = typeName === "link"
-  const canCreate = form.title.trim().length > 0 && (!showUrl || form.url.trim().length > 0) && !creating
+  const canCreate =
+    form.title.trim().length > 0 &&
+    (isFile ? file !== null : !showUrl || form.url.trim().length > 0) &&
+    !creating
+
+  function selectType(name: string) {
+    setTypeName(name)
+    setFile(null)
+  }
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (!next) {
       setForm(EMPTY_FORM)
+      setFile(null)
+      setProgress(null)
       setTypeName(defaultType)
     }
   }
 
+  const tagList = () =>
+    form.tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+
   async function handleCreate() {
+    if (isFile) {
+      if (!file) return
+      setCreating(true)
+      setProgress(0)
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("typeName", typeName)
+      fd.append("title", form.title)
+      fd.append("description", form.description)
+      fd.append("tags", tagList().join(","))
+      const result = await uploadItemFile(fd, setProgress)
+      setCreating(false)
+      setProgress(null)
+
+      if (result.ok) {
+        toast.success("Item created")
+        handleOpenChange(false)
+        router.refresh()
+      } else {
+        toast.error(result.error)
+      }
+      return
+    }
+
     setCreating(true)
     const result = await createItem({
       typeName,
@@ -76,10 +156,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
       content: showContent ? form.content : null,
       language: showLanguage ? form.language : null,
       url: showUrl ? form.url : null,
-      tags: form.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+      tags: tagList(),
     })
     setCreating(false)
 
@@ -102,7 +179,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
 
         <div className="space-y-4">
           <Field label="Type">
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {creatableTypes.map((type) => {
                 const Icon = iconMap[type.icon] ?? File
                 const selected = type.name === typeName
@@ -110,7 +187,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
                   <button
                     key={type.id}
                     type="button"
-                    onClick={() => setTypeName(type.name)}
+                    onClick={() => selectType(type.name)}
                     className={cn(
                       "flex flex-col items-center gap-1.5 rounded-md border p-2.5 text-xs capitalize transition-colors",
                       selected ? "bg-accent" : "border-border text-muted-foreground hover:bg-accent"
@@ -143,6 +220,18 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
               placeholder="Optional description"
             />
           </Field>
+
+          {isFile && (
+            <Field label={typeName === "image" ? "Image" : "File"}>
+              <FileUpload
+                kind={typeName as UploadKind}
+                value={file}
+                onChange={setFile}
+                disabled={creating}
+                progress={progress}
+              />
+            </Field>
+          )}
 
           {showContent && (
             <Field label="Content" htmlFor="create-content">

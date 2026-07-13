@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
   CONTENT_TYPES,
+  FILE_TYPES,
   LANGUAGE_TYPES,
   MARKDOWN_TYPES,
   isCodeType,
+  isFileType,
   isMarkdownType,
 } from "./item-fields"
 
@@ -50,6 +52,26 @@ describe("item-fields", () => {
     for (const type of CONTENT_TYPES) {
       // Every content-bearing type routes to exactly one editor.
       expect(isCodeType(type) !== isMarkdownType(type)).toBe(true)
+    }
+  })
+
+  it("treats only file and image as file types", () => {
+    expect([...FILE_TYPES].sort()).toEqual(["file", "image"])
+  })
+
+  it("isFileType is true only for file and image", () => {
+    expect(isFileType("file")).toBe(true)
+    expect(isFileType("image")).toBe(true)
+    expect(isFileType("snippet")).toBe(false)
+    expect(isFileType("link")).toBe(false)
+    expect(isFileType("unknown")).toBe(false)
+  })
+
+  it("file types never carry a text body", () => {
+    for (const type of FILE_TYPES) {
+      expect(CONTENT_TYPES.has(type)).toBe(false)
+      expect(isCodeType(type)).toBe(false)
+      expect(isMarkdownType(type)).toBe(false)
     }
   })
 })
