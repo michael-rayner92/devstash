@@ -1,29 +1,16 @@
-# Current Feature: Markdown Editor
+# Current Feature
 
 ## Status
 
-In Progress
+
 
 ## Goals
 
-- Create a `MarkdownEditor` component with a tabbed Write/Preview interface
-- Replace `Textarea` with `MarkdownEditor` for **notes and prompts only** (snippets/commands keep `CodeEditor`, no changes)
-- Render Markdown with `react-markdown` + `remark-gfm` (GitHub Flavored Markdown)
-- Match existing dark theme styling: `bg-[#1e1e1e]` container, `bg-[#2d2d2d]` header, copy button in header (same style as `CodeEditor`)
-- Support display (readonly) and edit modes: readonly shows only the Preview tab; edit defaults to Write with Preview available
-- Integrate at three points: create dialog (note/prompt content), drawer edit mode (note/prompt content), drawer view mode (readonly)
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- **Preview styling** via a custom CSS class (e.g. `.markdown-preview`) for reliable dark mode styling:
-  - Headings (h1–h6) visually distinct with proper sizing and weight
-  - Code blocks with dark background and monospace font; inline code with subtle background highlight
-  - Lists (ordered/unordered) with proper indentation and bullets
-  - Blockquotes with left border accent
-  - Links in blue with hover state
-  - Tables with borders and header background
-- Fluid height with max 400px, matching `CodeEditor` behavior
-- Spec file: `context/features/markdown-editor-spec.md`
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -59,3 +46,4 @@ In Progress
 - **2026-07-06** — Item create modal completed. New "New item" modal (shadcn `Dialog`, new `src/components/ui/dialog.tsx` primitive) opens from the top-bar button and replaces the previously inert button. Type selector (snippet, prompt, command, note, link) reuses the sidebar's non-Pro item types; fields adapt per type (content+language for snippet/command, content for prompt/note, URL for link — required). Added `createItem` server action in `src/actions/items.ts` (`{ success, data, error }`, `auth()` + Zod as source of truth, URL required when type is link) and `createItem` query in `src/lib/db/items.ts` (looks up the system `ItemType` by name, maps it to the right `ContentType`, connect-or-creates tags). Server independently enforces an allow-list of creatable type names rather than trusting the client's Pro filtering. New `src/components/items/item-create-dialog.tsx` (form resets on close/reopen, Create disabled until required fields are filled). Colocated unit tests for the action (8) and query (3). Verified in-browser: created a snippet and a link end-to-end (toast, list refresh, stats update), confirmed empty-title and missing-URL guards, cleaned up test items via delete; lint + build + 47 tests pass.
 - **2026-07-09** — Code Editor (Monaco) completed. New `src/components/ui/code-editor.tsx` (Monaco via `@monaco-editor/react` v4.7.0, loaded from the default jsDelivr CDN) replaces the plain `Textarea` for **snippet and command** items across view, edit, and create modes; notes/prompts/other types keep the `Textarea`. Always-dark VS Code styling regardless of the app theme (per the spec), custom `devstash-dark` Monaco theme with a slim translucent scrollbar, macOS traffic-light header carrying a language label (hidden when empty) + Copy button, fluid height via `getContentHeight()`/`onDidContentSizeChange` clamped 120–400px. TS/JS semantic + syntax validation disabled in `beforeMount` so standalone snippets don't show false "cannot find module" squiggles. Extracted shared field-visibility logic to `src/lib/item-fields.ts` (`CONTENT_TYPES`/`LANGUAGE_TYPES`/`isCodeType`, removing the sets previously duplicated in the edit form + create dialog) and language normalization to `src/lib/code-language.ts`; both unit tested (+9 tests). Drawer view mode drops its section-level Copy for code types (the editor header provides it). Known caveat: Monaco logs a benign `Uncaught (in promise) Canceled` rejection from its own dispose path on unmount (drawer/dialog close) — functionality unaffected, left as-is (consistent with the existing Radix `aria-describedby` dev artifact). Verified in-browser across snippet/command view+edit+create, including an end-to-end create that persisted Monaco content; lint + build + 56 tests pass. Committed as `feat: add Monaco code editor for snippets and commands` (`cd551ff`).
 - **2026-07-09** — Type-scoped create button added. Each `/items/[type]` page now shows a "New {type}" button that opens the create dialog with that type preselected, via a new optional `initialType` prop on `ItemCreateDialog` (falls back to the first creatable type if the given one isn't creatable, and resets to it on close). Rendered only for creatable (non-Pro) types — file/image pages show no button — gated by fetching `getSidebarItemTypes()` on the page. Styled as an outlined, type-colored button (border + text + icon in the type's color) to differentiate it from the solid neutral top-bar "New item" button directly above it. Verified in-browser (snippet=blue and command=orange preselect correctly; file page has no button); lint + build pass. Committed as `feat: add type-scoped create button to item type pages` (`5cd6e78`).
+- **2026-07-13** — Markdown Editor completed. New `src/components/ui/markdown-editor.tsx` (`react-markdown` v10 + `remark-gfm` v4) — a tabbed Write/Preview editor that replaces the plain `Textarea` for **note and prompt** items across create, edit, and view; snippets/commands keep the Monaco `CodeEditor`, and any other content type still falls back to `Textarea`. Always-dark chrome matching the code editor (`#1e1e1e` body / `#2d2d2d` header) with a header Copy button and Write/Preview tabs; readonly mode (drawer view) shows only the Preview tab, edit mode defaults to Write. Write is an auto-growing monospace textarea; both Write and Preview are fluid-height clamped 120–400px, scrolling beyond. GFM support verified end-to-end: headings, bold/italic, inline code, links, ordered/unordered/nested/task lists, blockquotes, fenced code blocks, and tables. Preview styled via a `.markdown-preview` block in `globals.css` (unlayered so it beats Tailwind's preflight reset — layered rules were the initial bug: they lost to preflight until moved unlayered). Extended `src/lib/item-fields.ts` with `MARKDOWN_TYPES` (note, prompt) + `isMarkdownType`, and wired the three integration points (`item-create-dialog.tsx`, `item-edit-form.tsx`, `item-drawer.tsx` — the drawer's section-level Copy is now hidden for markdown too, since the editor carries its own). Colocated unit tests for the new helper (+3, including a disjoint/coverage check that code and markdown types partition all content types). Gotcha found during verification: a running Turbopack dev server served a stale cached `globals.css` (edited before the session started, so no HMR fired) — a `touch` didn't force recompile; clearing `.next` and restarting did. Verified in-browser (note create → view → edit → delete; prompt uses the editor; snippet still uses Monaco with no regression; no app console errors); lint + build + 59 tests pass. Committed as `feat: add markdown editor for notes and prompts` (`a4918ab`).
