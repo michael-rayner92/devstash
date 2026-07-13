@@ -16,10 +16,11 @@ import {
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { CodeEditor } from "@/components/ui/code-editor"
+import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { DeleteItemDialog } from "@/components/items/item-delete-dialog"
 import { ItemEditForm } from "@/components/items/item-edit-form"
 import { iconMap } from "@/lib/icon-map"
-import { isCodeType } from "@/lib/item-fields"
+import { isCodeType, isMarkdownType } from "@/lib/item-fields"
 import { relativeTime } from "@/lib/relative-time"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
@@ -88,8 +89,9 @@ function DrawerBody({
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const copyText = detail.content ?? detail.url ?? ""
-  // Code types render in the CodeEditor, which carries its own copy button.
+  // Code and markdown types render in editors that carry their own copy button.
   const isCode = isCodeType(detail.itemType.name)
+  const isMarkdown = isMarkdownType(detail.itemType.name)
 
   if (mode === "edit") {
     return (
@@ -175,8 +177,8 @@ function DrawerBody({
         <section>
           <div className="mb-2 flex items-center justify-between">
             <SectionLabel>Content</SectionLabel>
-            {/* Code types show copy in the editor header; others get a section-level button. */}
-            {!isCode && (
+            {/* Code/markdown types show copy in the editor header; others get a section-level button. */}
+            {!isCode && !isMarkdown && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -189,7 +191,7 @@ function DrawerBody({
               </Button>
             )}
           </div>
-          <ContentBlock detail={detail} isCode={isCode} />
+          <ContentBlock detail={detail} isCode={isCode} isMarkdown={isMarkdown} />
         </section>
 
         {/* Tags */}
@@ -256,7 +258,15 @@ function DrawerBody({
   )
 }
 
-function ContentBlock({ detail, isCode }: { detail: ItemDetail; isCode: boolean }) {
+function ContentBlock({
+  detail,
+  isCode,
+  isMarkdown,
+}: {
+  detail: ItemDetail
+  isCode: boolean
+  isMarkdown: boolean
+}) {
   if (detail.contentType === "url" && detail.url) {
     return (
       <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -289,6 +299,9 @@ function ContentBlock({ detail, isCode }: { detail: ItemDetail; isCode: boolean 
   if (detail.content) {
     if (isCode) {
       return <CodeEditor readOnly value={detail.content} language={detail.language} />
+    }
+    if (isMarkdown) {
+      return <MarkdownEditor readOnly value={detail.content} />
     }
     return (
       <pre className="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-sm font-mono whitespace-pre-wrap wrap-break-word text-foreground">

@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CodeEditor } from "@/components/ui/code-editor"
+import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { SheetClose } from "@/components/ui/sheet"
 import { iconMap } from "@/lib/icon-map"
-import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
+import { CONTENT_TYPES, isCodeType, isMarkdownType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -34,6 +35,7 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
   const typeName = detail.itemType.name
   const showContent = CONTENT_TYPES.has(typeName)
   const isCode = isCodeType(typeName)
+  const isMarkdown = isMarkdownType(typeName)
   const showLanguage = isCode
   const showUrl = typeName === "link"
   const Icon = iconMap[detail.itemType.icon] ?? File
@@ -112,6 +114,14 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
                 value={content}
                 language={language}
                 onChange={setContent}
+              />
+            ) : isMarkdown ? (
+              <MarkdownEditor
+                id="edit-content"
+                ariaLabel="Content"
+                value={content}
+                onChange={setContent}
+                placeholder="Item content (Markdown supported)"
               />
             ) : (
               <Textarea

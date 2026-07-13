@@ -17,8 +17,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CodeEditor } from "@/components/ui/code-editor"
+import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { iconMap } from "@/lib/icon-map"
-import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
+import { CONTENT_TYPES, isCodeType, isMarkdownType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import type { SidebarItemType } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
@@ -53,6 +54,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
 
   const showContent = CONTENT_TYPES.has(typeName)
   const isCode = isCodeType(typeName)
+  const isMarkdown = isMarkdownType(typeName)
   const showLanguage = isCode
   const showUrl = typeName === "link"
   const canCreate = form.title.trim().length > 0 && (!showUrl || form.url.trim().length > 0) && !creating
@@ -151,6 +153,14 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
                   value={form.content}
                   language={form.language}
                   onChange={(next) => setForm((f) => ({ ...f, content: next }))}
+                />
+              ) : isMarkdown ? (
+                <MarkdownEditor
+                  id="create-content"
+                  ariaLabel="Content"
+                  value={form.content}
+                  onChange={(next) => setForm((f) => ({ ...f, content: next }))}
+                  placeholder="Item content (Markdown supported)"
                 />
               ) : (
                 <Textarea
