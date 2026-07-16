@@ -1,16 +1,16 @@
 "use client"
 
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
-import { useState } from "react"
 import { Check, Copy, Pin, Star, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
+import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ItemCard({ item }: { item: ItemWithType }) {
   const { openItem } = useItemDrawer()
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
   const type = item.itemType
   const Icon = iconMap[type.icon] ?? File
   const color = type.color
@@ -24,16 +24,9 @@ export function ItemCard({ item }: { item: ItemWithType }) {
     }
   }
 
-  async function handleCopy(event: MouseEvent<HTMLButtonElement>) {
+  function handleCopy(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation()
-    if (!copyText) return
-    try {
-      await navigator.clipboard.writeText(copyText)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Clipboard can be unavailable (e.g. insecure context) — fail silently.
-    }
+    copy(copyText)
   }
 
   return (

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { computeDominantType } from "@/lib/db/dominant-type"
 import type { ItemType } from "@/generated/prisma/client"
 
 export type CollectionWithStats = {
@@ -29,26 +30,9 @@ export async function getRecentCollections(userId: string, limit = 6): Promise<C
   })
 
   return collections.map((col) => {
-    const typeCounts = new Map<string, { type: ItemType; count: number }>()
-
-    for (const ic of col.items) {
-      const itemType = ic.item.itemType
-      const entry = typeCounts.get(itemType.id)
-      if (entry) {
-        entry.count++
-      } else {
-        typeCounts.set(itemType.id, { type: itemType, count: 1 })
-      }
-    }
-
-    let dominantType: ItemType | null = null
-    let maxCount = 0
-    for (const { type, count } of typeCounts.values()) {
-      if (count > maxCount) {
-        dominantType = type
-        maxCount = count
-      }
-    }
+    const { dominantType, allTypes } = computeDominantType(
+      col.items.map((ic) => ic.item.itemType)
+    )
 
     return {
       id: col.id,
@@ -58,7 +42,7 @@ export async function getRecentCollections(userId: string, limit = 6): Promise<C
       updatedAt: col.updatedAt,
       itemCount: col.items.length,
       dominantType,
-      allTypes: Array.from(typeCounts.values()).map((v) => v.type),
+      allTypes,
     }
   })
 }

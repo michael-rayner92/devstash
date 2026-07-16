@@ -1,10 +1,11 @@
 "use client"
 
 import type { BeforeMount, OnMount } from "@monaco-editor/react"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import Editor from "@monaco-editor/react"
 import { Check, Copy } from "lucide-react"
 import { monacoLanguage } from "@/lib/code-language"
+import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { cn } from "@/lib/utils"
 
 const MAX_HEIGHT = 400
@@ -67,8 +68,7 @@ export function CodeEditor({
   className,
 }: CodeEditorProps) {
   const [height, setHeight] = useState(MIN_HEIGHT)
-  const [copied, setCopied] = useState(false)
-  const copyTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const { copied, copy } = useCopyToClipboard()
 
   const label = language?.trim()
 
@@ -82,18 +82,6 @@ export function CodeEditor({
     updateHeight()
     // Editor disposes its listeners on unmount, so no manual cleanup is needed.
     editor.onDidContentSizeChange(updateHeight)
-  }
-
-  async function handleCopy() {
-    if (!value) return
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      if (copyTimeout.current) clearTimeout(copyTimeout.current)
-      copyTimeout.current = setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Clipboard can be unavailable (e.g. insecure context) — fail silently.
-    }
   }
 
   return (
@@ -119,7 +107,7 @@ export function CodeEditor({
           )}
           <button
             type="button"
-            onClick={handleCopy}
+            onClick={() => copy(value)}
             disabled={!value}
             className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-white/5 hover:text-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent"
           >

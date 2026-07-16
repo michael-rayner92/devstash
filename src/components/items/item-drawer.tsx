@@ -22,7 +22,9 @@ import { DeleteItemDialog } from "@/components/items/item-delete-dialog"
 import { ItemEditForm } from "@/components/items/item-edit-form"
 import { iconMap } from "@/lib/icon-map"
 import { isCodeType, isMarkdownType } from "@/lib/item-fields"
+import { formatSize } from "@/lib/file-constraints"
 import { relativeTime } from "@/lib/relative-time"
+import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -86,7 +88,7 @@ function DrawerBody({
   onDeleted: () => void
 }) {
   const [mode, setMode] = useState<"view" | "edit">("view")
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const copyText = detail.content ?? detail.url ?? ""
@@ -107,17 +109,6 @@ function DrawerBody({
         }}
       />
     )
-  }
-
-  async function handleCopy() {
-    if (!copyText) return
-    try {
-      await navigator.clipboard.writeText(copyText)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Clipboard can be unavailable (e.g. insecure context) — fail silently.
-    }
   }
 
   return (
@@ -187,7 +178,7 @@ function DrawerBody({
                 variant="ghost"
                 size="sm"
                 className="h-7 gap-1.5 text-muted-foreground"
-                onClick={handleCopy}
+                onClick={() => copy(copyText)}
                 disabled={!copyText}
               >
                 {copied ? <Check className="text-emerald-400" /> : <Copy />}
@@ -306,7 +297,7 @@ function ContentBlock({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm text-foreground">{detail.fileName ?? "File"}</p>
             {detail.fileSize != null && (
-              <p className="text-xs text-muted-foreground">{formatBytes(detail.fileSize)}</p>
+              <p className="text-xs text-muted-foreground">{formatSize(detail.fileSize)}</p>
             )}
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0 gap-1.5">
@@ -391,16 +382,4 @@ function DrawerError() {
       </div>
     </>
   )
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ["KB", "MB", "GB"]
-  let value = bytes / 1024
-  let unitIndex = 0
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex++
-  }
-  return `${value.toFixed(1)} ${units[unitIndex]}`
 }

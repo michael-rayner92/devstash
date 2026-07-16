@@ -1,6 +1,5 @@
 "use client"
 
-import type { ReactNode } from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -8,11 +7,11 @@ import { File, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { CodeEditor } from "@/components/ui/code-editor"
-import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { SheetClose } from "@/components/ui/sheet"
+import { FormField } from "@/components/items/form-field"
+import { ContentField } from "@/components/items/content-field"
 import { iconMap } from "@/lib/icon-map"
-import { CONTENT_TYPES, isCodeType, isMarkdownType } from "@/lib/item-fields"
+import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -34,9 +33,7 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
 
   const typeName = detail.itemType.name
   const showContent = CONTENT_TYPES.has(typeName)
-  const isCode = isCodeType(typeName)
-  const isMarkdown = isMarkdownType(typeName)
-  const showLanguage = isCode
+  const showLanguage = isCodeType(typeName)
   const showUrl = typeName === "link"
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
@@ -91,11 +88,11 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
 
       {/* Fields */}
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
-        <Field label="Title" htmlFor="edit-title">
+        <FormField label="Title" htmlFor="edit-title">
           <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </Field>
+        </FormField>
 
-        <Field label="Description" htmlFor="edit-description">
+        <FormField label="Description" htmlFor="edit-description">
           <Textarea
             id="edit-description"
             value={description}
@@ -103,52 +100,31 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
             rows={2}
             placeholder="Optional description"
           />
-        </Field>
+        </FormField>
 
         {showContent && (
-          <Field label="Content" htmlFor="edit-content">
-            {isCode ? (
-              <CodeEditor
-                id="edit-content"
-                ariaLabel="Content"
-                value={content}
-                language={language}
-                onChange={setContent}
-              />
-            ) : isMarkdown ? (
-              <MarkdownEditor
-                id="edit-content"
-                ariaLabel="Content"
-                value={content}
-                onChange={setContent}
-                placeholder="Item content (Markdown supported)"
-              />
-            ) : (
-              <Textarea
-                id="edit-content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={8}
-                className="font-mono"
-                placeholder="Item content"
-              />
-            )}
-          </Field>
+          <ContentField
+            id="edit-content"
+            typeName={typeName}
+            value={content}
+            onChange={setContent}
+            language={language}
+          />
         )}
 
         {showLanguage && (
-          <Field label="Language" htmlFor="edit-language">
+          <FormField label="Language" htmlFor="edit-language">
             <Input
               id="edit-language"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               placeholder="e.g. typescript"
             />
-          </Field>
+          </FormField>
         )}
 
         {showUrl && (
-          <Field label="URL" htmlFor="edit-url">
+          <FormField label="URL" htmlFor="edit-url">
             <Input
               id="edit-url"
               type="url"
@@ -156,10 +132,10 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com"
             />
-          </Field>
+          </FormField>
         )}
 
-        <Field label="Tags" htmlFor="edit-tags">
+        <FormField label="Tags" htmlFor="edit-tags">
           <Input
             id="edit-tags"
             value={tags}
@@ -167,7 +143,7 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
             placeholder="comma, separated, tags"
           />
           <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
-        </Field>
+        </FormField>
       </div>
 
       {/* Footer — Save / Cancel replace the view-mode action bar */}
@@ -180,27 +156,5 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
         </Button>
       </footer>
     </>
-  )
-}
-
-function Field({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string
-  htmlFor: string
-  children: ReactNode
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={htmlFor}
-        className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-      >
-        {label}
-      </label>
-      {children}
-    </div>
   )
 }
