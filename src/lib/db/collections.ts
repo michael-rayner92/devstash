@@ -55,3 +55,45 @@ export async function getDashboardStats(userId: string) {
   ])
   return { totalItems, totalCollections, totalFavorites }
 }
+
+/**
+ * A newly created collection, serialized for JSON transport (dates as ISO
+ * strings), matching the `ItemDetail` serialization convention.
+ */
+export type CollectionSummary = {
+  id: string
+  name: string
+  description: string | null
+  isFavorite: boolean
+  updatedAt: string
+}
+
+export interface CreateCollectionData {
+  name: string
+  description: string | null
+}
+
+/**
+ * Create a new collection owned by `userId`. Returns the created collection as
+ * a serializable `CollectionSummary`.
+ */
+export async function createCollection(
+  userId: string,
+  data: CreateCollectionData
+): Promise<CollectionSummary> {
+  const collection = await prisma.collection.create({
+    data: {
+      name: data.name,
+      description: data.description,
+      userId,
+    },
+  })
+
+  return {
+    id: collection.id,
+    name: collection.name,
+    description: collection.description,
+    isFavorite: collection.isFavorite,
+    updatedAt: collection.updatedAt.toISOString(),
+  }
+}

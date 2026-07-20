@@ -2,12 +2,13 @@
 
 import type { ReactNode } from "react"
 import { useState } from "react"
-import { PanelLeft, Plus, Search } from "lucide-react"
+import { FolderPlus, PanelLeft, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ItemDrawerProvider } from "@/components/items/item-drawer-provider"
 import { ItemCreateDialog } from "@/components/items/item-create-dialog"
+import { CollectionCreateDialog } from "@/components/collections/collection-create-dialog"
 import { SidebarContent, type SidebarProps } from "./sidebar-content"
 import { cn } from "@/lib/utils"
 
@@ -53,15 +54,26 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
           />
         </div>
 
-        <ItemCreateDialog
-          itemTypes={sidebarProps.itemTypes}
-          trigger={
-            <Button className="ml-auto">
-              <Plus />
-              New item
-            </Button>
-          }
-        />
+        <div className="ml-auto flex items-center gap-2">
+          <CollectionCreateDialog
+            trigger={
+              <Button variant="outline">
+                <FolderPlus />
+                <span className="hidden sm:inline">New collection</span>
+              </Button>
+            }
+          />
+
+          <ItemCreateDialog
+            itemTypes={sidebarProps.itemTypes}
+            trigger={
+              <Button>
+                <Plus />
+                <span className="hidden sm:inline">New item</span>
+              </Button>
+            }
+          />
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
