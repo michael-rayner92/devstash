@@ -17,6 +17,7 @@ export interface UpdateItemInput {
   url: string | null
   language: string | null
   tags: string[]
+  collectionIds: string[]
 }
 
 export type UpdateItemResult =
@@ -31,19 +32,24 @@ const trimmedOrNull = (v: unknown) =>
 const contentOrNull = (v: unknown) =>
   typeof v === "string" && v.trim() === "" ? null : v
 
+// Normalize a string array: trim, drop empties, dedupe. Shared by tags and
+// collection ids (ownership of ids is enforced in the query layer).
+const normalizedStringArray = z.preprocess(
+  (v) =>
+    Array.isArray(v)
+      ? Array.from(new Set(v.map((s) => String(s).trim()).filter(Boolean)))
+      : v,
+  z.array(z.string())
+)
+
 const updateItemSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.preprocess(trimmedOrNull, z.string().nullable()),
   content: z.preprocess(contentOrNull, z.string().nullable()),
   language: z.preprocess(trimmedOrNull, z.string().nullable()),
   url: z.preprocess(trimmedOrNull, z.url("Enter a valid URL").nullable()),
-  tags: z.preprocess(
-    (v) =>
-      Array.isArray(v)
-        ? Array.from(new Set(v.map((t) => String(t).trim()).filter(Boolean)))
-        : v,
-    z.array(z.string())
-  ),
+  tags: normalizedStringArray,
+  collectionIds: normalizedStringArray,
 })
 
 export async function updateItem(
@@ -82,6 +88,7 @@ export interface CreateItemInput {
   url: string | null
   language: string | null
   tags: string[]
+  collectionIds: string[]
 }
 
 export type CreateItemResult =
@@ -96,13 +103,8 @@ const createItemSchema = z
     content: z.preprocess(contentOrNull, z.string().nullable()),
     language: z.preprocess(trimmedOrNull, z.string().nullable()),
     url: z.preprocess(trimmedOrNull, z.url("Enter a valid URL").nullable()),
-    tags: z.preprocess(
-      (v) =>
-        Array.isArray(v)
-          ? Array.from(new Set(v.map((t) => String(t).trim()).filter(Boolean)))
-          : v,
-      z.array(z.string())
-    ),
+    tags: normalizedStringArray,
+    collectionIds: normalizedStringArray,
   })
   .refine((data) => data.typeName !== "link" || data.url !== null, {
     message: "URL is required",

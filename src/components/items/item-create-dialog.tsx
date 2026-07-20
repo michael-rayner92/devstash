@@ -19,6 +19,7 @@ import { FileUpload } from "@/components/ui/file-upload"
 import { FormField } from "@/components/items/form-field"
 import { ContentField } from "@/components/items/content-field"
 import { TypeSelector } from "@/components/items/type-selector"
+import { CollectionsField } from "@/components/items/collections-field"
 import { CONTENT_TYPES, isCodeType, isFileType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import { uploadItemFile } from "@/lib/upload-item-file"
@@ -53,6 +54,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
   const [open, setOpen] = useState(false)
   const [typeName, setTypeName] = useState(defaultType)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [collectionIds, setCollectionIds] = useState<string[]>([])
   const [file, setFile] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
@@ -75,6 +77,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
     setOpen(next)
     if (!next) {
       setForm(EMPTY_FORM)
+      setCollectionIds([])
       setFile(null)
       setProgress(null)
       setTypeName(defaultType)
@@ -109,6 +112,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
       fd.append("title", form.title)
       fd.append("description", form.description)
       fd.append("tags", tagList().join(","))
+      fd.append("collectionIds", collectionIds.join(","))
       const result = await uploadItemFile(fd, setProgress)
       setCreating(false)
       setProgress(null)
@@ -125,6 +129,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
       language: showLanguage ? form.language : null,
       url: showUrl ? form.url : null,
       tags: tagList(),
+      collectionIds,
     })
     setCreating(false)
     finish(result.success, result.success ? undefined : result.error)
@@ -215,6 +220,12 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
             />
             <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
           </FormField>
+
+          <CollectionsField
+            selected={collectionIds}
+            onChange={setCollectionIds}
+            disabled={creating}
+          />
         </div>
 
         <DialogFooter>

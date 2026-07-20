@@ -44,6 +44,14 @@ export async function POST(req: Request) {
         .filter(Boolean)
     )
   )
+  const collectionIds = Array.from(
+    new Set(
+      String(form.get("collectionIds") ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean)
+    )
+  )
 
   if (!UPLOAD_KINDS.includes(typeName as UploadKind)) {
     return NextResponse.json({ error: "Invalid item type" }, { status: 400 })
@@ -74,6 +82,7 @@ export async function POST(req: Request) {
       fileName: file.name,
       fileSize: file.size,
       tags,
+      collectionIds,
     })
 
     if (!created) {
