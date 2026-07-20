@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { SheetClose } from "@/components/ui/sheet"
 import { FormField } from "@/components/items/form-field"
 import { ContentField } from "@/components/items/content-field"
+import { CollectionsField } from "@/components/items/collections-field"
 import { iconMap } from "@/lib/icon-map"
 import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
@@ -29,6 +30,9 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
   const [language, setLanguage] = useState(detail.language ?? "")
   const [url, setUrl] = useState(detail.url ?? "")
   const [tags, setTags] = useState(detail.tags.map((tag) => tag.name).join(", "))
+  const [collectionIds, setCollectionIds] = useState<string[]>(
+    detail.collections.map((collection) => collection.id)
+  )
   const [saving, setSaving] = useState(false)
 
   const typeName = detail.itemType.name
@@ -51,6 +55,7 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
         .split(",")
         .map((tag) => tag.trim())
         .filter(Boolean),
+      collectionIds,
     })
     setSaving(false)
 
@@ -144,6 +149,12 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
           />
           <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
         </FormField>
+
+        <CollectionsField
+          selected={collectionIds}
+          onChange={setCollectionIds}
+          disabled={saving}
+        />
       </div>
 
       {/* Footer — Save / Cancel replace the view-mode action bar */}

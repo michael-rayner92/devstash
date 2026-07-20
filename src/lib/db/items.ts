@@ -64,11 +64,15 @@ type ItemDetailRow = Item & {
   collections: { collection: { id: string; name: string } }[]
 }
 
-// Relations to include so a row can be mapped to `ItemDetail`.
+// Relations to include so a row can be mapped to `ItemDetail`. Tags and
+// collections are ordered by name so cards, drawer, and the edit selector match.
 const itemDetailInclude = {
   itemType: true,
   tags: { orderBy: { name: "asc" } },
-  collections: { include: { collection: true } },
+  collections: {
+    include: { collection: true },
+    orderBy: { collection: { name: "asc" } },
+  },
 } as const
 
 function toItemDetail(item: ItemDetailRow): ItemDetail {
@@ -107,6 +111,20 @@ export async function getItemDetail(userId: string, itemId: string): Promise<Ite
   return toItemDetail(item)
 }
 
+/**
+ * Filter submitted collection ids down to those actually owned by `userId`.
+ * Foreign or non-existent ids are silently dropped, so a client can never link
+ * an item into a collection it doesn't own.
+ */
+async function ownedCollectionIds(userId: string, ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return []
+  const owned = await prisma.collection.findMany({
+    where: { userId, id: { in: ids } },
+    select: { id: true },
+  })
+  return owned.map((c) => c.id)
+}
+
 export interface UpdateItemData {
   title: string
   description: string | null
@@ -114,6 +132,7 @@ export interface UpdateItemData {
   url: string | null
   language: string | null
   tags: string[]
+  collectionIds: string[]
 }
 
 /**
@@ -121,6 +140,8 @@ export interface UpdateItemData {
  * first (the `update` where-clause can only target the unique `id`), so a user
  * can never mutate another user's item. Tags are fully replaced: existing links
  * are cleared and the new set is connect-or-created under the same user.
+ * Collection membership is fully replaced with the owned subset of
+ * `collectionIds` (existing join rows dropped, new ones created).
  * Returns the refreshed `ItemDetail`, or `null` if the item isn't owned/found.
  */
 export async function updateItem(
@@ -133,6 +154,8 @@ export async function updateItem(
     select: { id: true },
   })
   if (!existing) return null
+
+  const collectionIds = await ownedCollectionIds(userId, data.collectionIds)
 
   const item = await prisma.item.update({
     where: { id: itemId },
@@ -149,6 +172,10 @@ export async function updateItem(
           create: { name, userId },
         })),
       },
+      collections: {
+        deleteMany: {},
+        create: collectionIds.map((collectionId) => ({ collectionId })),
+      },
     },
     include: itemDetailInclude,
   })
@@ -164,6 +191,7 @@ export interface CreateItemData {
   url: string | null
   language: string | null
   tags: string[]
+  collectionIds: string[]
 }
 
 // Maps a creatable type name to the Item.contentType it stores its payload under.
@@ -181,7 +209,8 @@ const CONTENT_TYPE_BY_TYPE_NAME: Record<string, ContentType> = {
  * Create a new item owned by `userId`. Looks up the system `ItemType` by name
  * so the caller only ever deals in type names; returns `null` if the name
  * doesn't match a known system type. Tags are connect-or-created under the
- * same user, matching `updateItem`'s tag-handling convention.
+ * same user, matching `updateItem`'s tag-handling convention. The item is
+ * linked to the owned subset of `collectionIds`.
  */
 export async function createItem(userId: string, data: CreateItemData): Promise<ItemDetail | null> {
   const itemType = await prisma.itemType.findFirst({
@@ -189,6 +218,8 @@ export async function createItem(userId: string, data: CreateItemData): Promise<
     select: { id: true },
   })
   if (!itemType) return null
+
+  const collectionIds = await ownedCollectionIds(userId, data.collectionIds)
 
   const item = await prisma.item.create({
     data: {
@@ -206,6 +237,9 @@ export async function createItem(userId: string, data: CreateItemData): Promise<
           create: { name, userId },
         })),
       },
+      collections: {
+        create: collectionIds.map((collectionId) => ({ collectionId })),
+      },
     },
     include: itemDetailInclude,
   })
@@ -221,6 +255,7 @@ export interface CreateFileItemData {
   fileName: string
   fileSize: number
   tags: string[]
+  collectionIds: string[]
 }
 
 /**
@@ -238,6 +273,8 @@ export async function createFileItem(
   })
   if (!itemType) return null
 
+  const collectionIds = await ownedCollectionIds(userId, data.collectionIds)
+
   const item = await prisma.item.create({
     data: {
       title: data.title,
@@ -253,6 +290,9 @@ export async function createFileItem(
           where: { userId_name: { userId, name } },
           create: { name, userId },
         })),
+      },
+      collections: {
+        create: collectionIds.map((collectionId) => ({ collectionId })),
       },
     },
     include: itemDetailInclude,

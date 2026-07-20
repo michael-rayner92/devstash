@@ -20,6 +20,9 @@ vi.mock("@/lib/prisma", () => ({
     itemType: {
       findFirst: vi.fn(),
     },
+    collection: {
+      findMany: vi.fn(),
+    },
   },
 }))
 
@@ -34,6 +37,9 @@ const mockedPrisma = prisma as unknown as {
   }
   itemType: {
     findFirst: ReturnType<typeof vi.fn>
+  }
+  collection: {
+    findMany: ReturnType<typeof vi.fn>
   }
 }
 
@@ -123,6 +129,7 @@ describe("updateItem", () => {
     url: null,
     language: "bash",
     tags: ["git", "shell"],
+    collectionIds: [],
   }
 
   it("returns null and skips the write when the item is not owned by the user", async () => {
@@ -164,6 +171,49 @@ describe("updateItem", () => {
     )
     expect(result?.title).toBe("Updated title")
   })
+
+  it("replaces collection membership with the owned subset (foreign ids dropped)", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ id: "item-1" })
+    // Only col-1 and col-2 belong to the user; col-foreign is filtered out.
+    mockedPrisma.collection.findMany.mockResolvedValue([{ id: "col-1" }, { id: "col-2" }])
+    mockedPrisma.item.update.mockResolvedValue({ ...ITEM_ROW, title: "Updated title" })
+
+    await updateItem("user-1", "item-1", {
+      ...UPDATE_DATA,
+      collectionIds: ["col-1", "col-2", "col-foreign"],
+    })
+
+    expect(mockedPrisma.collection.findMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", id: { in: ["col-1", "col-2", "col-foreign"] } },
+      select: { id: true },
+    })
+    expect(mockedPrisma.item.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          collections: {
+            deleteMany: {},
+            create: [{ collectionId: "col-1" }, { collectionId: "col-2" }],
+          },
+        }),
+      })
+    )
+  })
+
+  it("clears all collection membership when none are selected (no ownership query)", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ id: "item-1" })
+    mockedPrisma.item.update.mockResolvedValue({ ...ITEM_ROW, title: "Updated title" })
+
+    await updateItem("user-1", "item-1", { ...UPDATE_DATA, collectionIds: [] })
+
+    expect(mockedPrisma.collection.findMany).not.toHaveBeenCalled()
+    expect(mockedPrisma.item.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          collections: { deleteMany: {}, create: [] },
+        }),
+      })
+    )
+  })
 })
 
 describe("createItem", () => {
@@ -179,6 +229,7 @@ describe("createItem", () => {
     url: null,
     language: "bash",
     tags: ["git", "shell"],
+    collectionIds: [],
   }
 
   it("returns null and skips the write when the type name doesn't match a known system type", async () => {
@@ -232,6 +283,26 @@ describe("createItem", () => {
 
     expect(mockedPrisma.item.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ contentType: "url" }) })
+    )
+  })
+
+  it("links the item to the owned subset of collections (foreign ids dropped)", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue({ id: "type-command" })
+    mockedPrisma.collection.findMany.mockResolvedValue([{ id: "col-1" }])
+    mockedPrisma.item.create.mockResolvedValue({ ...ITEM_ROW, title: "New command" })
+
+    await createItem("user-1", { ...CREATE_DATA, collectionIds: ["col-1", "col-foreign"] })
+
+    expect(mockedPrisma.collection.findMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", id: { in: ["col-1", "col-foreign"] } },
+      select: { id: true },
+    })
+    expect(mockedPrisma.item.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          collections: { create: [{ collectionId: "col-1" }] },
+        }),
+      })
     )
   })
 })
@@ -289,6 +360,7 @@ describe("createFileItem", () => {
     fileName: "logo.png",
     fileSize: 2048,
     tags: ["brand"],
+    collectionIds: [],
   }
 
   it("returns null and skips the write when the type name doesn't match a system type", async () => {
@@ -318,6 +390,22 @@ describe("createFileItem", () => {
           fileSize: 2048,
           userId: "user-1",
           itemTypeId: "type-image",
+        }),
+      })
+    )
+  })
+
+  it("links the uploaded item to the owned subset of collections", async () => {
+    mockedPrisma.itemType.findFirst.mockResolvedValue({ id: "type-image" })
+    mockedPrisma.collection.findMany.mockResolvedValue([{ id: "col-1" }])
+    mockedPrisma.item.create.mockResolvedValue({ ...ITEM_ROW, contentType: "file" })
+
+    await createFileItem("user-1", { ...FILE_DATA, collectionIds: ["col-1", "col-foreign"] })
+
+    expect(mockedPrisma.item.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          collections: { create: [{ collectionId: "col-1" }] },
         }),
       })
     )

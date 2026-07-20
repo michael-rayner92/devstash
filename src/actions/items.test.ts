@@ -34,6 +34,7 @@ const VALID_INPUT = {
   url: null,
   language: "bash",
   tags: ["git", "danger"],
+  collectionIds: ["col-1"],
 }
 
 // Minimal ItemDetail returned by the (mocked) query on success.
@@ -86,6 +87,7 @@ describe("updateItem (action)", () => {
       url: null,
       language: "  ts  ",
       tags: ["git", " git ", "", "shell"],
+      collectionIds: ["col-1", " col-1 ", "", "col-2"],
     })
 
     expect(vi.mocked(updateItemQuery)).toHaveBeenCalledWith("user-1", "item-1", {
@@ -95,6 +97,7 @@ describe("updateItem (action)", () => {
       language: "ts",
       url: null,
       tags: ["git", "shell"],
+      collectionIds: ["col-1", "col-2"],
     })
   })
 
@@ -130,6 +133,7 @@ describe("createItem (action)", () => {
     url: null,
     language: "bash",
     tags: ["git", "danger"],
+    collectionIds: ["col-1"],
   }
 
   it("rejects when there is no session", async () => {
@@ -180,6 +184,7 @@ describe("createItem (action)", () => {
       url: null,
       language: "  ts  ",
       tags: ["git", " git ", "", "shell"],
+      collectionIds: ["col-1", " col-1 ", "", "col-2"],
     })
 
     expect(vi.mocked(createItemQuery)).toHaveBeenCalledWith("user-1", {
@@ -190,6 +195,7 @@ describe("createItem (action)", () => {
       language: "ts",
       url: null,
       tags: ["git", "shell"],
+      collectionIds: ["col-1", "col-2"],
     })
   })
 

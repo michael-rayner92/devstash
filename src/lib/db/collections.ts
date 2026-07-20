@@ -47,6 +47,23 @@ export async function getRecentCollections(userId: string, limit = 6): Promise<C
   })
 }
 
+export type UserCollectionOption = {
+  id: string
+  name: string
+}
+
+/**
+ * Lightweight list of the user's collections (id + name, alphabetical) for
+ * populating the collection selector in the item create/edit forms.
+ */
+export async function getUserCollections(userId: string): Promise<UserCollectionOption[]> {
+  return prisma.collection.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  })
+}
+
 export async function getDashboardStats(userId: string) {
   const [totalItems, totalCollections, totalFavorites] = await Promise.all([
     prisma.item.count({ where: { userId } }),

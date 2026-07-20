@@ -1,16 +1,32 @@
-# Current Feature
+# Current Feature: Add Item to Collections
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a **collections multi-select input** to both the **new item** form (`item-create-dialog.tsx`) and the **edit item** form (`item-edit-form.tsx`) — pick zero, one, or many of the user's collections to add the item to.
+- Populate the selector from the **signed-in user's own collections** (id + name), fetched user-scoped.
+- Extend the `createItem` server action + query to accept `collectionIds` and link the new item to those collections (via the `ItemCollection` join table).
+- Extend the `updateItem` server action + query to accept `collectionIds` and **replace** the item's collection membership with the selected set (mirrors how tags are fully replaced).
+- **Server validates** that every submitted collection id belongs to the current user (never trust client ids) — silently drop/deny foreign ids.
+- On save, reflect the change everywhere: the drawer's COLLECTIONS section, dashboard collection cards' item counts, and sidebar counts (via the returned `ItemDetail` + `router.refresh()`).
+- Colocated unit tests for the extended actions and queries (incl. ownership filtering of collection ids).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Out of scope:** collection detail pages (`/collections`, `/collections/[id]`) — "don't worry about displaying the collection pages yet". This feature only wires the membership editing into the item forms.
+- **Data model:** `Item` ↔ `Collection` is many-to-many via the `ItemCollection` join table (`@@id([itemId, collectionId])`, cascade on delete). `ItemDetail` already exposes `collections: { id, name }[]`, so the drawer view already renders current membership — we're adding the *edit* capability.
+- **Follow existing item patterns:**
+  - Actions/queries: `src/actions/items.ts` + `src/lib/db/items.ts` (`createItem`/`updateItem`). Tags are the closest analog — replaced via `set: []` + `connectOrCreate`; collections will use `set`/`connect` on the join relation but must be **validated as owned first**.
+  - Forms: `src/components/items/item-create-dialog.tsx` and `src/components/items/item-edit-form.tsx` (controlled inputs, no form library). Reuse `FormField`.
+- **Fetching the collection list for the selector:**
+  - Create dialog is mounted in `DashboardShell` (server props flow via `AuthenticatedShell` → already passes `itemTypes`/sidebar data) — can pass the user's collections down the same way.
+  - Edit form lives in the client drawer (opens on demand) — per the project convention ("api routes for any client-side calls"), likely add `GET /api/collections` (auth-scoped) OR reuse the same server-provided list. Decide during implementation; prefer the simplest consistent option.
+  - Add a lightweight user-scoped `getUserCollections` (id + name, alphabetical) to `src/lib/db/collections.ts`.
+- **UI:** no existing multi-select primitive. Likely a compact checkbox/toggle list of collection names within the form (collections are few — free tier 3). Keep it minimal and consistent with the shadcn look; empty state ("No collections yet") when the user has none.
+- Per workflow: document (this step) → branch `feature/item-collections` → implement → test (`npm run test` + `npm run build`) → verify in-browser → commit only after passing + permission → merge → delete branch.
 
 ## History
 
