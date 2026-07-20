@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { computeDominantType } from "@/lib/db/dominant-type"
-import type { ItemType } from "@/generated/prisma/client"
+import type { Collection, ItemType } from "@/generated/prisma/client"
+import type { ItemWithType } from "@/lib/db/items"
 
 export type CollectionWithStats = {
   id: string
@@ -13,38 +14,94 @@ export type CollectionWithStats = {
   allTypes: ItemType[]
 }
 
+// Relations needed to compute a collection's stats (item count + type spread).
+const collectionStatsInclude = {
+  items: { include: { item: { include: { itemType: true } } } },
+} as const
+
+type CollectionStatsRow = Collection & {
+  items: { item: { itemType: ItemType } }[]
+}
+
+function toCollectionWithStats(col: CollectionStatsRow): CollectionWithStats {
+  const { dominantType, allTypes } = computeDominantType(
+    col.items.map((ic) => ic.item.itemType)
+  )
+
+  return {
+    id: col.id,
+    name: col.name,
+    description: col.description,
+    isFavorite: col.isFavorite,
+    updatedAt: col.updatedAt,
+    itemCount: col.items.length,
+    dominantType,
+    allTypes,
+  }
+}
+
 export async function getRecentCollections(userId: string, limit = 6): Promise<CollectionWithStats[]> {
   const collections = await prisma.collection.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
     take: limit,
+    include: collectionStatsInclude,
+  })
+
+  return collections.map(toCollectionWithStats)
+}
+
+/** All of a user's collections (most-recently-updated first), for `/collections`. */
+export async function getCollections(userId: string): Promise<CollectionWithStats[]> {
+  const collections = await prisma.collection.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: collectionStatsInclude,
+  })
+
+  return collections.map(toCollectionWithStats)
+}
+
+export type CollectionDetail = {
+  id: string
+  name: string
+  description: string | null
+  isFavorite: boolean
+  updatedAt: Date
+  items: ItemWithType[]
+}
+
+/**
+ * A single collection plus its items, scoped to its owner. Items come back in
+ * the `ItemWithType` shape the item cards consume, most-recently-updated first.
+ * Returns `null` when the collection is missing or not owned by `userId`.
+ */
+export async function getCollectionWithItems(
+  userId: string,
+  collectionId: string
+): Promise<CollectionDetail | null> {
+  const collection = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
     include: {
       items: {
+        orderBy: { item: { updatedAt: "desc" } },
         include: {
-          item: {
-            include: { itemType: true },
-          },
+          item: { include: { itemType: true, tags: { orderBy: { name: "asc" } } } },
         },
       },
     },
   })
 
-  return collections.map((col) => {
-    const { dominantType, allTypes } = computeDominantType(
-      col.items.map((ic) => ic.item.itemType)
-    )
+  if (!collection) return null
 
-    return {
-      id: col.id,
-      name: col.name,
-      description: col.description,
-      isFavorite: col.isFavorite,
-      updatedAt: col.updatedAt,
-      itemCount: col.items.length,
-      dominantType,
-      allTypes,
-    }
-  })
+  return {
+    id: collection.id,
+    name: collection.name,
+    description: collection.description,
+    isFavorite: collection.isFavorite,
+    updatedAt: collection.updatedAt,
+    items: collection.items.map((ic) => ic.item),
+  }
 }
 
 export type UserCollectionOption = {
