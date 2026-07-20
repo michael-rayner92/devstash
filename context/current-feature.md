@@ -1,16 +1,30 @@
-# Current Feature
+# Current Feature: Create Collection
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a "New collection" button in the top bar that opens a create modal (shadcn `Dialog`, mirroring the item create flow).
+- Modal collects the fields needed to create a collection: **name** (required) and **description** (optional).
+- Add a `createCollection` server action (`{ success, data, error }` shape, `auth()` guard, Zod validation as source of truth) in `src/actions/collections.ts`.
+- Add a `createCollection` query in `src/lib/db/collections.ts`, user-scoped to the signed-in user.
+- Show a Sonner toast on success and on failure.
+- On save, ensure everything reflecting collections updates with the new collection (dashboard recent collections, sidebar collections list, stats) via `router.refresh()`.
+- Colocated unit tests for the new server action and query.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Follow the item create patterns exactly.** Reference: `src/components/items/item-create-dialog.tsx`, `src/actions/items.ts` (`createItem`), `src/lib/db/items.ts` (`createItem`), and `src/components/ui/dialog.tsx`.
+- Collections must be **user-scoped** — server components fetch via `lib/db` functions; client-side calls go through API routes.
+- Existing collections infrastructure to build on:
+  - `src/lib/db/collections.ts` already has `getRecentCollections` and `getDashboardStats`.
+  - `src/lib/db/sidebar.ts` has `getSidebarCollections`.
+  - `src/components/dashboard/CollectionCard` renders collections.
+- The `Collection` model (see schema): `name`, `description?`, `isFavorite`, optional `defaultTypeId`, `userId`. Create only needs `name` + `description` for this iteration; `defaultType`/`isFavorite` deferred.
+- Top-bar button lives alongside the existing "New item" button — decide styling to differentiate (the item create dialog opens from the same top bar).
+- Per workflow: document (this step) → branch `feature/create-collection` → implement → test (`npm run test` + `npm run build`) → verify in-browser → commit only after passing + permission → merge → delete branch.
 
 ## History
 

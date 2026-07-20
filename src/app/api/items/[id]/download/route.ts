@@ -45,6 +45,13 @@ export async function GET(
       "Content-Disposition": `${disposition}; filename="${encodeURIComponent(fileName)}"`,
       // Prevent MIME sniffing (defense-in-depth for user-supplied SVG/HTML).
       "X-Content-Type-Options": "nosniff",
+      // Neutralize active content in user-uploaded files served inline. An SVG
+      // opened as a top-level document can otherwise execute embedded scripts on
+      // our origin (stored XSS); `sandbox` (no allow-scripts) blocks execution
+      // and forces an opaque origin, while `default-src 'none'` blocks any
+      // resources the file tries to fetch. Inline markup still renders, and this
+      // header is ignored for <img> subresource loads, so previews are unaffected.
+      "Content-Security-Policy": "default-src 'none'; sandbox",
       "Cache-Control": "private, max-age=3600",
     },
   })

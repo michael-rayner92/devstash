@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { computeDominantType } from "@/lib/db/dominant-type"
 
 const PRO_TYPE_NAMES = new Set(["file", "image"])
 
@@ -57,29 +58,16 @@ export async function getSidebarCollections(userId: string): Promise<SidebarColl
   })
 
   return collections.map((col) => {
-    const typeCounts = new Map<string, { color: string; count: number }>()
-    for (const ic of col.items) {
-      const { id, color } = ic.item.itemType
-      const entry = typeCounts.get(id)
-      if (entry) entry.count++
-      else typeCounts.set(id, { color, count: 1 })
-    }
-
-    let dominantColor: string | null = null
-    let maxCount = 0
-    for (const { color, count } of typeCounts.values()) {
-      if (count > maxCount) {
-        dominantColor = color
-        maxCount = count
-      }
-    }
+    const { dominantType } = computeDominantType(
+      col.items.map((ic) => ic.item.itemType)
+    )
 
     return {
       id: col.id,
       name: col.name,
       isFavorite: col.isFavorite,
       itemCount: col.items.length,
-      dominantColor,
+      dominantColor: dominantType?.color ?? null,
     }
   })
 }

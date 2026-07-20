@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Check, Copy } from "lucide-react"
+import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { cn } from "@/lib/utils"
 
 const MAX_HEIGHT = 400
@@ -36,9 +37,8 @@ export function MarkdownEditor({
   className,
 }: MarkdownEditorProps) {
   const [tab, setTab] = useState<Tab>(readOnly ? "preview" : "write")
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const copyTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Readonly mode never leaves Preview, even if state somehow drifts.
   const activeTab: Tab = readOnly ? "preview" : tab
@@ -55,24 +55,6 @@ export function MarkdownEditor({
   useEffect(() => {
     if (activeTab === "write") resize()
   }, [activeTab, value, resize])
-
-  useEffect(() => {
-    return () => {
-      if (copyTimeout.current) clearTimeout(copyTimeout.current)
-    }
-  }, [])
-
-  async function handleCopy() {
-    if (!value) return
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      if (copyTimeout.current) clearTimeout(copyTimeout.current)
-      copyTimeout.current = setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Clipboard can be unavailable (e.g. insecure context) — fail silently.
-    }
-  }
 
   return (
     <div
@@ -96,7 +78,7 @@ export function MarkdownEditor({
         </div>
         <button
           type="button"
-          onClick={handleCopy}
+          onClick={() => copy(value)}
           disabled={!value}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-white/5 hover:text-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent"
         >
