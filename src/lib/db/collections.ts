@@ -171,3 +171,60 @@ export async function createCollection(
     updatedAt: collection.updatedAt.toISOString(),
   }
 }
+
+export interface UpdateCollectionData {
+  name: string
+  description: string | null
+}
+
+/**
+ * Update a collection's metadata (name + description), scoped to its owner.
+ * Returns the updated collection as a serializable `CollectionSummary`, or
+ * `null` if the collection isn't owned/found.
+ */
+export async function updateCollection(
+  userId: string,
+  collectionId: string,
+  data: UpdateCollectionData
+): Promise<CollectionSummary | null> {
+  const existing = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { id: true },
+  })
+  if (!existing) return null
+
+  const collection = await prisma.collection.update({
+    where: { id: collectionId },
+    data: {
+      name: data.name,
+      description: data.description,
+    },
+  })
+
+  return {
+    id: collection.id,
+    name: collection.name,
+    description: collection.description,
+    isFavorite: collection.isFavorite,
+    updatedAt: collection.updatedAt.toISOString(),
+  }
+}
+
+/**
+ * Delete a collection, scoped to its owner. Only the collection and its
+ * `ItemCollection` join rows (via cascade) are removed — the items themselves
+ * are preserved. Returns `true` on success, `false` if not owned/found.
+ */
+export async function deleteCollection(
+  userId: string,
+  collectionId: string
+): Promise<boolean> {
+  const existing = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { id: true },
+  })
+  if (!existing) return false
+
+  await prisma.collection.delete({ where: { id: collectionId } })
+  return true
+}

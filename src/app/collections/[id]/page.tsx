@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getCollectionWithItems } from "@/lib/db/collections"
 import { ItemCard } from "@/components/items/item-card"
+import { CollectionDetailActions } from "@/components/collections/collection-detail-actions"
 
 export default async function CollectionDetailPage({
   params,
@@ -26,19 +27,28 @@ export default async function CollectionDetailPage({
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
-      <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-muted p-2">
-          <Library className="h-5 w-5 text-muted-foreground" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-muted p-2">
+            <Library className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{collection.name}</h1>
+            {collection.description && (
+              <p className="mt-1 text-sm text-muted-foreground">{collection.description}</p>
+            )}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {items.length} {items.length === 1 ? "item" : "items"}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{collection.name}</h1>
-          {collection.description && (
-            <p className="mt-1 text-sm text-muted-foreground">{collection.description}</p>
-          )}
-          <p className="mt-1 text-sm text-muted-foreground">
-            {items.length} {items.length === 1 ? "item" : "items"}
-          </p>
-        </div>
+        <CollectionDetailActions
+          collection={{
+            id: collection.id,
+            name: collection.name,
+            description: collection.description,
+          }}
+        />
       </div>
 
       {items.length > 0 ? (
