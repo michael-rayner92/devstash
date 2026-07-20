@@ -1,16 +1,33 @@
-# Current Feature
+# Current Feature: Collection Edit / Delete / Favorite Actions
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- **Collection detail page (`/collections/[id]`)** — add three action controls to the header: **Edit**, **Delete**, and **Favorite**.
+  - **Favorite** — render the icon/button only; **do not** wire up any favorite behavior yet (no action, no DB write).
+  - **Edit** — opens a modal to edit the collection's metadata (name + description), mirroring the create-collection dialog.
+  - **Delete** — opens a confirmation dialog before deleting. Deleting removes **only the collection**; its items must **not** be deleted — they simply stop belonging to that collection. On success, navigate away from the (now-gone) detail page (to `/collections`).
+- **Collection cards (`/collections` grid + dashboard)** — add a 3-dots (more) icon that opens a dropdown menu with **Edit**, **Delete**, and **Favorite**.
+  - Clicking the 3-dots / dropdown must **not** navigate. Clicking anywhere else on the card navigates to that collection's page (current behavior).
+  - Edit and Delete from the dropdown reuse the same modal + confirmation dialog as the detail page.
+  - Favorite in the dropdown is display-only (no behavior yet), consistent with the detail page.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Scope of "delete":** Per the Prisma schema, `ItemCollection` has `onDelete: Cascade` on its `collection` relation, while `Item` does **not** cascade from `Collection`. So deleting a `Collection` row cleans up only the join rows — items are preserved automatically. This satisfies "items should NOT be deleted, they just will not exist in that collection anymore." No manual item cleanup needed.
+- **New server actions** (in `src/actions/collections.ts`, matching the existing `createCollection` pattern — `{ success, data?, error }`, `auth()` guard, Zod as source of truth):
+  - `updateCollection` — name (required) + description; owner-scoped.
+  - `deleteCollection` — owner-scoped delete; returns `{ success, error }`.
+  - No favorite action this iteration.
+- **New DB queries** (in `src/lib/db/collections.ts`, owner-scoped ownership check like the item queries): `updateCollection` and `deleteCollection`.
+- **CollectionCard refactor** (`src/components/dashboard/collection-card.tsx`): currently the whole card is a `Link` and it's a server component. To host a dropdown that stops click propagation, the card (or a menu sub-component) must become a client component. Keep whole-card navigation working (click / Enter / Space) while the 3-dots button intercepts its own clicks (`stopPropagation` / `preventDefault`). Used in two places — `/dashboard` and `/collections` — both must keep working.
+- **Reuse existing primitives:** `dropdown-menu.tsx` (already used in the sidebar user area), `dialog.tsx` (edit modal — mirror `CollectionCreateDialog`), `alert-dialog.tsx` (delete confirmation — mirror `DeleteItemDialog`'s `useTransition` + `e.preventDefault()` keep-open pattern).
+- **Refresh:** After edit/delete, call `router.refresh()` so the card grid, dashboard, and sidebar reflect changes (consistent with create flow).
+- **Tests:** Colocate unit tests for the new server actions and DB queries (`src/actions/collections.test.ts`, `src/lib/db/collections.test.ts`) — auth guard, Zod validation, owner-scoping, and that delete does not touch items. No component tests (per coding standards).
+- **Favorite** is deferred to a future feature — this ships the icon/button UI only in both locations.
 
 ## History
 

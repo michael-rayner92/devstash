@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   createCollection,
+  updateCollection,
+  deleteCollection,
   getCollections,
   getCollectionWithItems,
 } from "@/lib/db/collections"
@@ -10,6 +12,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     collection: {
       create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
@@ -21,6 +25,8 @@ vi.mock("@/lib/prisma", () => ({
 const mockedPrisma = prisma as unknown as {
   collection: {
     create: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
+    delete: ReturnType<typeof vi.fn>
     findMany: ReturnType<typeof vi.fn>
     findFirst: ReturnType<typeof vi.fn>
   }
@@ -74,6 +80,83 @@ describe("createCollection", () => {
       expect.objectContaining({ data: expect.objectContaining({ description: null }) })
     )
     expect(result.description).toBeNull()
+  })
+})
+
+describe("updateCollection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns null when the collection is missing or not owned by the user", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null)
+
+    const result = await updateCollection("user-1", "col-x", {
+      name: "Renamed",
+      description: null,
+    })
+
+    expect(mockedPrisma.collection.findFirst).toHaveBeenCalledWith({
+      where: { id: "col-x", userId: "user-1" },
+      select: { id: true },
+    })
+    expect(mockedPrisma.collection.update).not.toHaveBeenCalled()
+    expect(result).toBeNull()
+  })
+
+  it("updates name + description and returns the serialized summary", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ id: "col-1" })
+    mockedPrisma.collection.update.mockResolvedValue({
+      ...COLLECTION_ROW,
+      name: "Renamed",
+      description: "New description",
+    })
+
+    const result = await updateCollection("user-1", "col-1", {
+      name: "Renamed",
+      description: "New description",
+    })
+
+    expect(mockedPrisma.collection.update).toHaveBeenCalledWith({
+      where: { id: "col-1" },
+      data: { name: "Renamed", description: "New description" },
+    })
+    expect(result).toEqual({
+      id: "col-1",
+      name: "Renamed",
+      description: "New description",
+      isFavorite: false,
+      updatedAt: "2026-07-20T00:00:00.000Z",
+    })
+  })
+})
+
+describe("deleteCollection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns false and does not delete when not owned/found", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null)
+
+    const result = await deleteCollection("user-1", "col-x")
+
+    expect(mockedPrisma.collection.findFirst).toHaveBeenCalledWith({
+      where: { id: "col-x", userId: "user-1" },
+      select: { id: true },
+    })
+    expect(mockedPrisma.collection.delete).not.toHaveBeenCalled()
+    expect(result).toBe(false)
+  })
+
+  it("deletes the owned collection and returns true (items are left untouched)", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ id: "col-1" })
+    mockedPrisma.collection.delete.mockResolvedValue(COLLECTION_ROW)
+
+    const result = await deleteCollection("user-1", "col-1")
+
+    expect(mockedPrisma.collection.delete).toHaveBeenCalledWith({ where: { id: "col-1" } })
+    expect(result).toBe(true)
   })
 })
 
