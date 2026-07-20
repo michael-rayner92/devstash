@@ -1,16 +1,33 @@
-# Current Feature
+# Current Feature: Collection Pages
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Create the **`/collections`** page: a grid of **all** the signed-in user's collections, rendered with the existing `CollectionCard`.
+- Create the **`/collections/[id]`** page: a header (collection name, description, item count) plus a grid of that collection's **items**, rendered with the existing item cards (`ItemCard`). `notFound()` when the collection is missing or not owned by the user.
+- **Reuse existing cards** — no new card components. Collections grid = `CollectionCard`; items grid = `ItemCard` (mirrors `/items/[type]/page.tsx`).
+- Wire both routes under the authenticated **sidebar shell** (same `AuthenticatedShell` as `/dashboard` and `/items`) and add `/collections` to the protected routes in `src/proxy.ts`.
+- Ensure the **"View all collections"** sidebar link points to `/collections`, and every collection link (dashboard `CollectionCard`, sidebar Favourites/Recent) points to `/collections/[id]`. (These `href`s already exist — this feature makes them resolve; verify during `start`.)
+- Empty states for both pages (no collections yet / empty collection).
+- Colocated unit tests for the new `lib/db` queries.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Out of scope:** editing collection metadata, removing/adding items from the collection page (membership editing already lives in the item create/edit forms), deleting collections, favoriting/pinning from these pages.
+- **Existing pieces to reuse:**
+  - `src/components/dashboard/collection-card.tsx` — `CollectionCard` takes `CollectionWithStats` and already links to `/collections/${id}`.
+  - `src/components/items/item-card.tsx` — `ItemCard` takes `ItemWithType`, opens the item drawer on click (the `ItemDrawerProvider` is already mounted in the shell, so item clicks in a collection open the drawer for free).
+  - `src/app/items/[type]/page.tsx` — reference for the authenticated page + responsive grid (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3`) + dashed empty-state panel.
+- **DB (`src/lib/db/collections.ts`):**
+  - Add `getCollections(userId)` returning **all** the user's collections as `CollectionWithStats` (same shape `getRecentCollections` returns / `CollectionCard` consumes — likely factor the shared mapping so `getRecentCollections` becomes `getCollections` sliced, or a shared limit param).
+  - Add `getCollectionWithItems(userId, collectionId)` — owner-scoped; returns the collection meta + its items as `ItemWithType[]` (the shape the item cards consume), or `null` when missing/unowned (→ `notFound()`).
+- **Mixed-type collections:** a collection can hold any item types. Keep it simple — render **all** items with `ItemCard` (its left border already colors per type). Per-type rendering (image gallery / file list) is a possible later refinement, not required here.
+- **Routing/protection:** add `src/app/collections/layout.tsx` wrapping children in `AuthenticatedShell` (mirrors `src/app/items/layout.tsx` if present); add `/collections` to the `src/proxy.ts` matcher; page-level `auth()` guard like the other authenticated pages.
+- **Tests:** pages are server components (no component tests per project scope); the new `lib/db` queries get colocated unit tests (owner-scoping, null-on-unowned).
+- Per workflow: document (this step) → branch `feature/collection-pages` (from `main`) → implement → test (`npm run test` + `npm run build`) → verify in-browser → commit only after passing + permission → merge → delete branch.
 
 ## History
 
