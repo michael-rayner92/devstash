@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma"
+import { ITEMS_PER_PAGE, getPageMeta } from "@/lib/pagination"
 import type { ContentType, Item, ItemType, Tag } from "@/generated/prisma/client"
+
+/** A page of results plus the totals needed to render pagination controls. */
+export type PaginatedItems = {
+  items: ItemWithType[]
+  totalCount: number
+  page: number
+  totalPages: number
+}
 
 export type ItemWithType = Item & {
   itemType: ItemType
@@ -49,12 +58,30 @@ export async function getItemTypeByName(name: string): Promise<ItemType | null> 
   return prisma.itemType.findFirst({ where: { name, isSystem: true } })
 }
 
-export async function getItemsByType(userId: string, typeName: string): Promise<ItemWithType[]> {
-  return prisma.item.findMany({
-    where: { userId, itemType: { name: typeName } },
+/**
+ * Fetch one page of a user's items of a given type, most-recently-updated
+ * first, along with the total count. Only the current page's rows are loaded
+ * (Prisma `skip`/`take`); `requestedPage` is clamped into range.
+ */
+export async function getItemsByType(
+  userId: string,
+  typeName: string,
+  requestedPage = 1,
+  perPage: number = ITEMS_PER_PAGE
+): Promise<PaginatedItems> {
+  const where = { userId, itemType: { name: typeName } }
+  const totalCount = await prisma.item.count({ where })
+  const { page, totalPages, skip, take } = getPageMeta(totalCount, perPage, requestedPage)
+
+  const items = await prisma.item.findMany({
+    where,
     orderBy: { updatedAt: "desc" },
+    skip,
+    take,
     include: { itemType: true, tags: { orderBy: { name: "asc" } } },
   })
+
+  return { items, totalCount, page, totalPages }
 }
 
 // Shape returned by the detail queries below (base item + the relations we include).
