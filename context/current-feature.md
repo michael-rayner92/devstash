@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Global Search / Command Palette
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Global command palette that opens with **Cmd+K** (Mac) / **Ctrl+K** (Windows)
+- Fuzzy search across **all items and collections** (client-side, no server round-trips)
+- Results **grouped** into an Items section and a Collections section
+- Full **keyboard navigation** — arrow keys to move, Enter to select
+- Each result shows context: **item type icon** for items, **item count** for collections
+- Selecting a result navigates: items open the **item drawer**, collections go to the **collection page**
+- The **TopBar search input** opens the palette on click and shows a **⌘K hint** in its placeholder
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Component:** shadcn `cmdk` (Command) primitive — needs to be installed (manual install, matching the project's existing shadcn approach)
+- **Search strategy:** client-side fuzzy search; pre-fetch the searchable dataset on app load (no server round-trips per keystroke)
+- **Search dataset shape:**
+  - Items: `id`, `title`, `type`, `content` preview
+  - Collections: `id`, `name`, `itemCount`
+- **Reuse existing data-fetching functions** where possible (e.g. queries in `src/lib/db/`) rather than writing new bespoke fetches
+- Navigation targets already exist: item drawer via `ItemDrawerProvider` (mounted in the shell), collection pages at `/collections/[id]`
+- The TopBar currently has a non-functional search input — this feature makes it live
 
 ## History
 
