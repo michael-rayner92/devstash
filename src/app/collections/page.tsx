@@ -2,16 +2,26 @@ import { Library } from "lucide-react"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getCollections } from "@/lib/db/collections"
+import { parsePageParam } from "@/lib/pagination"
 import { CollectionCard } from "@/components/dashboard/collection-card"
+import { Pagination } from "@/components/ui/pagination"
 
-export default async function CollectionsPage() {
+export default async function CollectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+
   const session = await auth()
   const userId = session?.user?.id
   const dbUser = userId
     ? await prisma.user.findUnique({ where: { id: userId } })
     : null
 
-  const collections = dbUser ? await getCollections(dbUser.id) : []
+  const { collections, totalCount, page, totalPages } = dbUser
+    ? await getCollections(dbUser.id, parsePageParam(pageParam))
+    : { collections: [], totalCount: 0, page: 1, totalPages: 1 }
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
@@ -22,17 +32,20 @@ export default async function CollectionsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Collections</h1>
           <p className="text-sm text-muted-foreground">
-            {collections.length} {collections.length === 1 ? "collection" : "collections"}
+            {totalCount} {totalCount === 1 ? "collection" : "collections"}
           </p>
         </div>
       </div>
 
       {collections.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {collections.map((collection) => (
-            <CollectionCard key={collection.id} collection={collection} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {collections.map((collection) => (
+              <CollectionCard key={collection.id} collection={collection} />
+            ))}
+          </div>
+          <Pagination currentPage={page} totalPages={totalPages} basePath="/collections" />
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
           <div className="mb-4 rounded-full bg-muted p-3">

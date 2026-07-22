@@ -1,16 +1,21 @@
-# Current Feature
+# Current Feature: Pagination
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add pagination to `/items/[type]` and `/collections/[id]` pages
+- Render pagination controls at the bottom: numbered page links + prev/next
+- Prev/next are disabled (greyed out) when not available (first/last page)
+- Only fetch the items/collections needed for the current page — no fetch-all-then-slice
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Constants: `ITEMS_PER_PAGE = 21`, `COLLECTIONS_PER_PAGE = 21`
+- Dashboard limits (separate from listing pagination): `DASHBOARD_COLLECTIONS_LIMIT = 6`, `DASHBOARD_RECENT_ITEMS_LIMIT = 10`
+- Source spec: `context/features/pagination-spec.md`
 
 ## History
 

@@ -5,6 +5,7 @@ import {
   deleteItem,
   getItemDetail,
   getItemFileForDownload,
+  getItemsByType,
   updateItem,
 } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
@@ -13,9 +14,11 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     item: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      count: vi.fn(),
     },
     itemType: {
       findFirst: vi.fn(),
@@ -31,9 +34,11 @@ vi.mock("@/lib/prisma", () => ({
 const mockedPrisma = prisma as unknown as {
   item: {
     findFirst: ReturnType<typeof vi.fn>
+    findMany: ReturnType<typeof vi.fn>
     create: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
     delete: ReturnType<typeof vi.fn>
+    count: ReturnType<typeof vi.fn>
   }
   itemType: {
     findFirst: ReturnType<typeof vi.fn>
@@ -440,5 +445,44 @@ describe("getItemFileForDownload", () => {
       fileUrl: "https://cdn.example.com/user-1/x.pdf",
       fileName: "x.pdf",
     })
+  })
+})
+
+describe("getItemsByType", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("scopes to the user + type, paginates, and returns totals", async () => {
+    const item = { id: "item-1", title: "useDebounce", itemType: { name: "snippet" }, tags: [] }
+    mockedPrisma.item.count.mockResolvedValue(1)
+    mockedPrisma.item.findMany.mockResolvedValue([item])
+
+    const result = await getItemsByType("user-1", "snippet")
+
+    expect(mockedPrisma.item.count).toHaveBeenCalledWith({
+      where: { userId: "user-1", itemType: { name: "snippet" } },
+    })
+    expect(mockedPrisma.item.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1", itemType: { name: "snippet" } },
+        skip: 0,
+        take: 21,
+      })
+    )
+    expect(result).toMatchObject({ items: [item], totalCount: 1, page: 1, totalPages: 1 })
+  })
+
+  it("clamps an out-of-range page to the last page and skips accordingly", async () => {
+    mockedPrisma.item.count.mockResolvedValue(25) // 2 pages at 21/page
+    mockedPrisma.item.findMany.mockResolvedValue([])
+
+    const result = await getItemsByType("user-1", "snippet", 99)
+
+    expect(result.page).toBe(2)
+    expect(result.totalPages).toBe(2)
+    expect(mockedPrisma.item.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 21, take: 21 })
+    )
   })
 })

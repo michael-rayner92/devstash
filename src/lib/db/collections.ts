@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { computeDominantType } from "@/lib/db/dominant-type"
+import { COLLECTIONS_PER_PAGE, ITEMS_PER_PAGE, getPageMeta } from "@/lib/pagination"
 import type { Collection, ItemType } from "@/generated/prisma/client"
 import type { ItemWithType } from "@/lib/db/items"
 
@@ -51,15 +52,36 @@ export async function getRecentCollections(userId: string, limit = 6): Promise<C
   return collections.map(toCollectionWithStats)
 }
 
-/** All of a user's collections (most-recently-updated first), for `/collections`. */
-export async function getCollections(userId: string): Promise<CollectionWithStats[]> {
+/** A page of collections plus the totals needed to render pagination controls. */
+export type PaginatedCollections = {
+  collections: CollectionWithStats[]
+  totalCount: number
+  page: number
+  totalPages: number
+}
+
+/**
+ * Fetch one page of a user's collections (most-recently-updated first) plus the
+ * total count, for `/collections`. Only the current page's rows are loaded
+ * (Prisma `skip`/`take`); `requestedPage` is clamped into range.
+ */
+export async function getCollections(
+  userId: string,
+  requestedPage = 1,
+  perPage: number = COLLECTIONS_PER_PAGE
+): Promise<PaginatedCollections> {
+  const totalCount = await prisma.collection.count({ where: { userId } })
+  const { page, totalPages, skip, take } = getPageMeta(totalCount, perPage, requestedPage)
+
   const collections = await prisma.collection.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
+    skip,
+    take,
     include: collectionStatsInclude,
   })
 
-  return collections.map(toCollectionWithStats)
+  return { collections: collections.map(toCollectionWithStats), totalCount, page, totalPages }
 }
 
 export type CollectionDetail = {
@@ -69,30 +91,50 @@ export type CollectionDetail = {
   isFavorite: boolean
   updatedAt: Date
   items: ItemWithType[]
+  totalCount: number
+  page: number
+  totalPages: number
 }
 
 /**
- * A single collection plus its items, scoped to its owner. Items come back in
- * the `ItemWithType` shape the item cards consume, most-recently-updated first.
- * Returns `null` when the collection is missing or not owned by `userId`.
+ * A single collection plus one page of its items, scoped to its owner. Ownership
+ * and metadata (including the total item count) are read first; only the current
+ * page's items are then loaded via the join table (Prisma `skip`/`take`), most-
+ * recently-updated first. `requestedPage` is clamped into range. Returns `null`
+ * when the collection is missing or not owned by `userId`.
  */
 export async function getCollectionWithItems(
   userId: string,
-  collectionId: string
+  collectionId: string,
+  requestedPage = 1,
+  perPage: number = ITEMS_PER_PAGE
 ): Promise<CollectionDetail | null> {
   const collection = await prisma.collection.findFirst({
     where: { id: collectionId, userId },
-    include: {
-      items: {
-        orderBy: { item: { updatedAt: "desc" } },
-        include: {
-          item: { include: { itemType: true, tags: { orderBy: { name: "asc" } } } },
-        },
-      },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      isFavorite: true,
+      updatedAt: true,
+      _count: { select: { items: true } },
     },
   })
 
   if (!collection) return null
+
+  const totalCount = collection._count.items
+  const { page, totalPages, skip, take } = getPageMeta(totalCount, perPage, requestedPage)
+
+  const links = await prisma.itemCollection.findMany({
+    where: { collectionId },
+    orderBy: { item: { updatedAt: "desc" } },
+    skip,
+    take,
+    include: {
+      item: { include: { itemType: true, tags: { orderBy: { name: "asc" } } } },
+    },
+  })
 
   return {
     id: collection.id,
@@ -100,7 +142,10 @@ export async function getCollectionWithItems(
     description: collection.description,
     isFavorite: collection.isFavorite,
     updatedAt: collection.updatedAt,
-    items: collection.items.map((ic) => ic.item),
+    items: links.map((ic) => ic.item),
+    totalCount,
+    page,
+    totalPages,
   }
 }
 

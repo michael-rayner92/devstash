@@ -16,6 +16,10 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
+    },
+    itemCollection: {
+      findMany: vi.fn(),
     },
   },
 }))
@@ -29,6 +33,10 @@ const mockedPrisma = prisma as unknown as {
     delete: ReturnType<typeof vi.fn>
     findMany: ReturnType<typeof vi.fn>
     findFirst: ReturnType<typeof vi.fn>
+    count: ReturnType<typeof vi.fn>
+  }
+  itemCollection: {
+    findMany: ReturnType<typeof vi.fn>
   }
 }
 
@@ -165,7 +173,8 @@ describe("getCollections", () => {
     vi.clearAllMocks()
   })
 
-  it("scopes to the user and maps each row to stats (count + dominant type)", async () => {
+  it("scopes to the user, paginates, and maps each row to stats (count + dominant type)", async () => {
+    mockedPrisma.collection.count.mockResolvedValue(1)
     mockedPrisma.collection.findMany.mockResolvedValue([
       {
         ...COLLECTION_ROW,
@@ -175,16 +184,33 @@ describe("getCollections", () => {
 
     const result = await getCollections("user-1")
 
+    expect(mockedPrisma.collection.count).toHaveBeenCalledWith({ where: { userId: "user-1" } })
     expect(mockedPrisma.collection.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "user-1" } })
+      expect.objectContaining({ where: { userId: "user-1" }, skip: 0, take: 21 })
     )
-    expect(result).toHaveLength(1)
-    expect(result[0]).toMatchObject({
+    expect(result.totalCount).toBe(1)
+    expect(result.page).toBe(1)
+    expect(result.totalPages).toBe(1)
+    expect(result.collections).toHaveLength(1)
+    expect(result.collections[0]).toMatchObject({
       id: "col-1",
       name: "React Patterns",
       itemCount: 2,
       dominantType: ITEM_TYPE,
     })
+  })
+
+  it("clamps an out-of-range page to the last page and skips accordingly", async () => {
+    mockedPrisma.collection.count.mockResolvedValue(25) // 2 pages at 21/page
+    mockedPrisma.collection.findMany.mockResolvedValue([])
+
+    const result = await getCollections("user-1", 99)
+
+    expect(result.totalPages).toBe(2)
+    expect(result.page).toBe(2)
+    expect(mockedPrisma.collection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 21, take: 21 })
+    )
   })
 })
 
@@ -204,15 +230,19 @@ describe("getCollectionWithItems", () => {
     expect(result).toBeNull()
   })
 
-  it("returns the collection meta plus its items flattened to ItemWithType", async () => {
+  it("returns the collection meta plus one page of items flattened to ItemWithType", async () => {
     const item = { id: "item-1", title: "useDebounce", itemType: ITEM_TYPE, tags: [] }
     mockedPrisma.collection.findFirst.mockResolvedValue({
       ...COLLECTION_ROW,
-      items: [{ item }],
+      _count: { items: 1 },
     })
+    mockedPrisma.itemCollection.findMany.mockResolvedValue([{ item }])
 
     const result = await getCollectionWithItems("user-1", "col-1")
 
+    expect(mockedPrisma.itemCollection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { collectionId: "col-1" }, skip: 0, take: 21 })
+    )
     expect(result).toEqual({
       id: "col-1",
       name: "React Patterns",
@@ -220,6 +250,17 @@ describe("getCollectionWithItems", () => {
       isFavorite: false,
       updatedAt: new Date("2026-07-20T00:00:00.000Z"),
       items: [item],
+      totalCount: 1,
+      page: 1,
+      totalPages: 1,
     })
+  })
+
+  it("does not query items when the collection is not owned/found", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null)
+
+    await getCollectionWithItems("user-1", "col-x")
+
+    expect(mockedPrisma.itemCollection.findMany).not.toHaveBeenCalled()
   })
 })

@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma"
 import { getItemTypeByName, getItemsByType } from "@/lib/db/items"
 import { getSidebarItemTypes } from "@/lib/db/sidebar"
 import { iconMap } from "@/lib/icon-map"
+import { parsePageParam } from "@/lib/pagination"
 import { Button } from "@/components/ui/button"
+import { Pagination } from "@/components/ui/pagination"
 import { ImageCard } from "@/components/items/image-card"
 import { ItemCard } from "@/components/items/item-card"
 import { FileListRow } from "@/components/items/file-list-row"
@@ -13,10 +15,13 @@ import { ItemCreateDialog } from "@/components/items/item-create-dialog"
 
 export default async function ItemsByTypePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ type: string }>
+  searchParams: Promise<{ page?: string }>
 }) {
   const { type: typeParam } = await params
+  const { page: pageParam } = await searchParams
   const typeName = typeParam.replace(/s$/, "")
 
   const [itemType, itemTypes] = await Promise.all([
@@ -31,7 +36,9 @@ export default async function ItemsByTypePage({
     ? await prisma.user.findUnique({ where: { id: userId } })
     : null
 
-  const items = dbUser ? await getItemsByType(dbUser.id, typeName) : []
+  const { items, totalCount, page, totalPages } = dbUser
+    ? await getItemsByType(dbUser.id, typeName, parsePageParam(pageParam))
+    : { items: [], totalCount: 0, page: 1, totalPages: 1 }
   const Icon = iconMap[itemType.icon] ?? File
 
   // All system types are creatable (file/image upload to R2; the rest carry a
@@ -48,7 +55,7 @@ export default async function ItemsByTypePage({
           <div>
             <h1 className="text-2xl font-bold tracking-tight capitalize">{itemType.name}s</h1>
             <p className="text-sm text-muted-foreground">
-              {items.length} {items.length === 1 ? "item" : "items"}
+              {totalCount} {totalCount === 1 ? "item" : "items"}
             </p>
           </div>
         </div>
@@ -72,23 +79,30 @@ export default async function ItemsByTypePage({
       </div>
 
       {items.length > 0 ? (
-        typeName === "file" ? (
-          <div className="rounded-xl border border-border">
-            {items.map((item) => (
-              <FileListRow key={item.id} item={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {items.map((item) =>
-              typeName === "image" ? (
-                <ImageCard key={item.id} item={item} />
-              ) : (
-                <ItemCard key={item.id} item={item} />
-              )
-            )}
-          </div>
-        )
+        <>
+          {typeName === "file" ? (
+            <div className="rounded-xl border border-border">
+              {items.map((item) => (
+                <FileListRow key={item.id} item={item} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {items.map((item) =>
+                typeName === "image" ? (
+                  <ImageCard key={item.id} item={item} />
+                ) : (
+                  <ItemCard key={item.id} item={item} />
+                )
+              )}
+            </div>
+          )}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            basePath={`/items/${typeParam}`}
+          />
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
           <div className="mb-4 rounded-full p-3" style={{ backgroundColor: `${itemType.color}15` }}>

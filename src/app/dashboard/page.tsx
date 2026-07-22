@@ -4,6 +4,7 @@ import { ItemRow } from "@/components/dashboard/item-row"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
 import { getPinnedItems, getRecentItems } from "@/lib/db/items"
+import { DASHBOARD_COLLECTIONS_LIMIT, DASHBOARD_RECENT_ITEMS_LIMIT } from "@/lib/pagination"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -24,10 +25,10 @@ export default async function DashboardPage() {
 
   const [collections, stats, pinnedItems, recentItems] = dbUser
     ? await Promise.all([
-        getRecentCollections(dbUser.id, 6),
+        getRecentCollections(dbUser.id, DASHBOARD_COLLECTIONS_LIMIT),
         getDashboardStats(dbUser.id),
         getPinnedItems(dbUser.id),
-        getRecentItems(dbUser.id, 10),
+        getRecentItems(dbUser.id, DASHBOARD_RECENT_ITEMS_LIMIT),
       ])
     : [[], { totalItems: 0, totalCollections: 0, totalFavorites: 0 }, [], []]
 
