@@ -20,6 +20,28 @@ export type ProfileData = {
   itemTypeCounts: ItemTypeCount[]
 }
 
+export type AccountSettings = {
+  hasPassword: boolean
+}
+
+/**
+ * Lightweight query for the settings page — only needs to know whether the
+ * account has a password (GitHub-only accounts hide the change-password form).
+ * Avoids the item/collection counting done by getProfileData.
+ */
+export async function getAccountSettings(
+  userId: string,
+): Promise<AccountSettings | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { password: true },
+  })
+
+  if (!user) return null
+
+  return { hasPassword: !!user.password }
+}
+
 export async function getProfileData(userId: string): Promise<ProfileData | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },

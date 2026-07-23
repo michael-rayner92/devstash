@@ -6,8 +6,6 @@ import { auth } from "@/auth"
 import { getProfileData } from "@/lib/db/profile"
 import { iconMap } from "@/lib/icon-map"
 import { getInitials } from "@/lib/string-utils"
-import { ChangePasswordForm } from "@/components/profile/change-password-form"
-import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog"
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -99,23 +97,6 @@ export default async function ProfilePage() {
               </ul>
             </>
           )}
-        </section>
-
-        {/* Change password — only for email/password accounts */}
-        {profile.hasPassword && (
-          <section className="rounded-xl border border-border bg-card p-6">
-            <h2 className="mb-4 text-base font-semibold">Change password</h2>
-            <ChangePasswordForm />
-          </section>
-        )}
-
-        {/* Danger zone */}
-        <section className="rounded-xl border border-destructive/40 bg-card p-6">
-          <h2 className="mb-1 text-base font-semibold text-destructive">Danger zone</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Permanently delete your account and all associated data.
-          </p>
-          <DeleteAccountDialog />
         </section>
       </div>
     </div>
