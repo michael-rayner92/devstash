@@ -8,6 +8,7 @@ export const proxy = auth((req) => {
   const isProtected =
     req.nextUrl.pathname.startsWith("/dashboard") ||
     req.nextUrl.pathname.startsWith("/profile") ||
+    req.nextUrl.pathname.startsWith("/settings") ||
     req.nextUrl.pathname.startsWith("/items") ||
     req.nextUrl.pathname.startsWith("/collections")
   if (isProtected && !isLoggedIn) {

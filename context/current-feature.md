@@ -1,16 +1,23 @@
-# Current Feature
+# Current Feature: Settings Page
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- New `/settings` route, protected (added to `src/proxy.ts` + page-level `auth()` guard, mirroring `/profile`).
+- Add a "Settings" link to the user avatar dropdown at the bottom of the sidebar (`sidebar-content.tsx`), alongside the existing "Profile" and "Sign out" items.
+- Move the **Account actions** — Change password (`ChangePasswordForm`) and Delete account / Danger zone (`DeleteAccountDialog`) — off the profile page and onto the settings page.
+- Profile page keeps its identity + usage stats; it no longer renders the change-password or danger-zone sections.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Existing account-action components live in `src/components/profile/` (`change-password-form.tsx`, `delete-account-dialog.tsx`) and their server actions in `src/actions/profile.ts` — reuse as-is; only the render location moves. Consider whether the components should move to `src/components/settings/` for clarity, or stay put and be imported by the settings page (minimal-change default: leave the files, re-import from settings).
+- `ChangePasswordForm` should still be gated behind `profile.hasPassword` (hidden for GitHub-only accounts), same as today.
+- The settings page needs the same `getProfileData` (or a lighter query) to know `hasPassword`. Follow the profile page's `auth()` guard + `redirect("/sign-in?callbackUrl=/settings")` pattern.
+- Match the profile page's layout shell (`max-w-2xl`, section cards, back-to-dashboard link).
+- Scope: page + link + moving the two sections. No new account features. Unit tests for `src/actions/profile.ts` already exist — verify they still pass after any file moves.
 
 ## History
 
