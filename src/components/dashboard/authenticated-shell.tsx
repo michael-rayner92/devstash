@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { EditorPreferencesProvider } from "@/components/editor-preferences/editor-preferences-provider"
 import { getSidebarItemTypes, getSidebarCollections } from "@/lib/db/sidebar"
+import { normalizeEditorPreferences } from "@/lib/editor-preferences"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -31,14 +33,18 @@ export async function AuthenticatedShell({ children }: { children: ReactNode }) 
       }
     : null
 
+  const editorPreferences = normalizeEditorPreferences(dbUser?.editorPreferences)
+
   return (
-    <DashboardShell
-      itemTypes={itemTypes}
-      favoriteCollections={favoriteCollections}
-      recentCollections={recentCollections}
-      user={user}
-    >
-      {children}
-    </DashboardShell>
+    <EditorPreferencesProvider initialPreferences={editorPreferences}>
+      <DashboardShell
+        itemTypes={itemTypes}
+        favoriteCollections={favoriteCollections}
+        recentCollections={recentCollections}
+        user={user}
+      >
+        {children}
+      </DashboardShell>
+    </EditorPreferencesProvider>
   )
 }
