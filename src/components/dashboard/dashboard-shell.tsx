@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
-import { FolderPlus, PanelLeft, Plus, Search } from "lucide-react"
+import Link from "next/link"
+import { FolderPlus, PanelLeft, Plus, Search, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ItemDrawerProvider } from "@/components/items/item-drawer-provider"
@@ -82,6 +83,12 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
 
         {/* Right: create actions */}
         <div className="flex flex-1 items-center justify-end gap-2">
+          <Button variant="ghost" size="icon" asChild aria-label="Favorites">
+            <Link href="/favorites">
+              <Star className="h-5 w-5" />
+            </Link>
+          </Button>
+
           <CollectionCreateDialog
             trigger={
               <Button variant="outline">
