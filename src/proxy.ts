@@ -10,7 +10,8 @@ export const proxy = auth((req) => {
     req.nextUrl.pathname.startsWith("/profile") ||
     req.nextUrl.pathname.startsWith("/settings") ||
     req.nextUrl.pathname.startsWith("/items") ||
-    req.nextUrl.pathname.startsWith("/collections")
+    req.nextUrl.pathname.startsWith("/collections") ||
+    req.nextUrl.pathname.startsWith("/favorites")
   if (isProtected && !isLoggedIn) {
     const signInUrl = new URL("/sign-in", req.url)
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname)

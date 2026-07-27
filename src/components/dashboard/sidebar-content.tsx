@@ -44,7 +44,7 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
       {/* Main nav */}
       <nav className="px-3 pt-4 pb-2 space-y-0.5">
         <NavLink href="/dashboard" icon={Home} label="Overview" active={pathname === "/dashboard"} />
-        <NavLink href="/dashboard/favorites" icon={Star} label="Favorites" active={pathname === "/dashboard/favorites"} />
+        <NavLink href="/favorites" icon={Star} label="Favorites" active={pathname === "/favorites"} />
         <NavLink href="/dashboard/recent" icon={Clock} label="Recently used" active={pathname === "/dashboard/recent"} />
       </nav>
 
