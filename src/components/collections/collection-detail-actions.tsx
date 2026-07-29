@@ -9,16 +9,30 @@ import {
   type EditableCollection,
 } from "@/components/collections/collection-edit-dialog"
 import { CollectionDeleteDialog } from "@/components/collections/collection-delete-dialog"
+import { toggleCollectionFavorite } from "@/actions/collections"
+import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
+import { cn } from "@/lib/utils"
 
 /**
  * Edit / Favorite / Delete controls for the collection detail page header.
- * Favorite is display-only for now. Deleting navigates back to `/collections`
- * since the current page no longer exists.
+ * Deleting navigates back to `/collections` since the current page no longer
+ * exists after the collection is gone.
  */
-export function CollectionDetailActions({ collection }: { collection: EditableCollection }) {
+export function CollectionDetailActions({
+  collection,
+  isFavorite: initialFavorite,
+}: {
+  collection: EditableCollection
+  isFavorite: boolean
+}) {
   const router = useRouter()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const { isFavorite, isPending, toggle } = useFavoriteToggle(
+    collection.id,
+    initialFavorite,
+    toggleCollectionFavorite
+  )
 
   return (
     <>
@@ -27,8 +41,15 @@ export function CollectionDetailActions({ collection }: { collection: EditableCo
           <Pencil className="h-4 w-4" />
           <span className="hidden sm:inline">Edit</span>
         </Button>
-        <Button variant="outline" size="sm" aria-label="Favorite">
-          <Star className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggle}
+          disabled={isPending}
+          aria-pressed={isFavorite}
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Star className={cn("h-4 w-4", isFavorite && "fill-amber-400 text-amber-400")} />
         </Button>
         <Button
           variant="outline"

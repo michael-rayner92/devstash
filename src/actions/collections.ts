@@ -6,6 +6,7 @@ import {
   createCollection as createCollectionQuery,
   updateCollection as updateCollectionQuery,
   deleteCollection as deleteCollectionQuery,
+  toggleCollectionFavorite as toggleCollectionFavoriteQuery,
 } from "@/lib/db/collections"
 import type { CollectionSummary } from "@/lib/db/collections"
 
@@ -103,6 +104,27 @@ export async function deleteCollection(id: string): Promise<DeleteCollectionResu
       return { success: false, error: "Collection not found" }
     }
     return { success: true }
+  } catch {
+    return { success: false, error: "Something went wrong. Please try again." }
+  }
+}
+
+export type ToggleFavoriteResult =
+  | { success: true; data: { isFavorite: boolean } }
+  | { success: false; error: string }
+
+export async function toggleCollectionFavorite(id: string): Promise<ToggleFavoriteResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  try {
+    const result = await toggleCollectionFavoriteQuery(session.user.id, id)
+    if (!result) {
+      return { success: false, error: "Collection not found" }
+    }
+    return { success: true, data: result }
   } catch {
     return { success: false, error: "Something went wrong. Please try again." }
   }

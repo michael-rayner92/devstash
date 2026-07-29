@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
-import { createItem, deleteItem, updateItem } from "@/actions/items"
+import { createItem, deleteItem, toggleItemFavorite, updateItem } from "@/actions/items"
 import { auth } from "@/auth"
 import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
+  toggleItemFavorite as toggleItemFavoriteQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
@@ -18,6 +19,7 @@ vi.mock("@/lib/db/items", () => ({
   createItem: vi.fn(),
   updateItem: vi.fn(),
   deleteItem: vi.fn(),
+  toggleItemFavorite: vi.fn(),
 }))
 
 vi.mock("@/lib/r2", () => ({
@@ -300,6 +302,57 @@ describe("deleteItem (action)", () => {
     vi.mocked(deleteItemQuery).mockRejectedValue(new Error("db down"))
 
     const result = await deleteItem("item-1")
+
+    expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
+  })
+})
+
+describe("toggleItemFavorite (action)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("rejects when there is no session", async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    const result = await toggleItemFavorite("item-1")
+
+    expect(result).toEqual({ success: false, error: "Not authenticated" })
+    expect(vi.mocked(toggleItemFavoriteQuery)).not.toHaveBeenCalled()
+  })
+
+  it("passes the session user id and item id to the query", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemFavoriteQuery).mockResolvedValue({ isFavorite: true })
+
+    await toggleItemFavorite("item-1")
+
+    expect(vi.mocked(toggleItemFavoriteQuery)).toHaveBeenCalledWith("user-1", "item-1")
+  })
+
+  it("returns not found when the query reports the item is missing/unowned", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemFavoriteQuery).mockResolvedValue(null)
+
+    const result = await toggleItemFavorite("item-x")
+
+    expect(result).toEqual({ success: false, error: "Item not found" })
+  })
+
+  it("returns the new favorite state on success", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemFavoriteQuery).mockResolvedValue({ isFavorite: true })
+
+    const result = await toggleItemFavorite("item-1")
+
+    expect(result).toEqual({ success: true, data: { isFavorite: true } })
+  })
+
+  it("returns a generic error when the query throws", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemFavoriteQuery).mockRejectedValue(new Error("db down"))
+
+    const result = await toggleItemFavorite("item-1")
 
     expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
   })

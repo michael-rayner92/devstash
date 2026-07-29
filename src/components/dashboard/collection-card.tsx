@@ -1,10 +1,13 @@
 "use client"
 
-import type { CSSProperties, KeyboardEvent } from "react"
+import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { Star, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
+import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
+import { toggleCollectionFavorite } from "@/actions/collections"
+import { cn } from "@/lib/utils"
 import { CollectionCardMenu } from "@/components/collections/collection-card-menu"
 import type { CollectionWithStats } from "@/lib/db/collections"
 
@@ -14,6 +17,17 @@ export function CollectionCard({ collection }: { collection: CollectionWithStats
   const color = dominantType?.color ?? "#6b7280"
   const DominantIcon = dominantType ? (iconMap[dominantType.icon] ?? File) : File
   const secondaryTypes = allTypes.filter((t) => t.id !== dominantType?.id)
+  const { isFavorite, isPending, toggle } = useFavoriteToggle(
+    collection.id,
+    collection.isFavorite,
+    toggleCollectionFavorite
+  )
+
+  function handleFavoriteClick(event: MouseEvent<HTMLButtonElement>) {
+    // Don't let the star's click bubble to the card (which navigates).
+    event.stopPropagation()
+    toggle()
+  }
 
   function navigate() {
     router.push(`/collections/${collection.id}`)
@@ -57,13 +71,27 @@ export function CollectionCard({ collection }: { collection: CollectionWithStats
                 })}
               </div>
             )}
-            {collection.isFavorite && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
+            <button
+              type="button"
+              onClick={handleFavoriteClick}
+              disabled={isPending}
+              aria-pressed={isFavorite}
+              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              className={cn(
+                "rounded-md transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-muted-foreground/60"
+              )}
+            >
+              <Star className={cn("h-4 w-4", isFavorite && "fill-yellow-400 text-yellow-400")} />
+            </button>
             <CollectionCardMenu
               collection={{
                 id: collection.id,
                 name: collection.name,
                 description: collection.description,
               }}
+              isFavorite={isFavorite}
+              onToggleFavorite={toggle}
             />
           </div>
         </div>

@@ -5,6 +5,7 @@ import {
   deleteCollection,
   getCollections,
   getCollectionWithItems,
+  toggleCollectionFavorite,
 } from "@/lib/db/collections"
 import { prisma } from "@/lib/prisma"
 
@@ -262,5 +263,50 @@ describe("getCollectionWithItems", () => {
     await getCollectionWithItems("user-1", "col-x")
 
     expect(mockedPrisma.itemCollection.findMany).not.toHaveBeenCalled()
+  })
+})
+
+describe("toggleCollectionFavorite", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns null and does not update when the collection is missing or not owned", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue(null)
+
+    const result = await toggleCollectionFavorite("user-1", "col-x")
+
+    expect(mockedPrisma.collection.findFirst).toHaveBeenCalledWith({
+      where: { id: "col-x", userId: "user-1" },
+      select: { isFavorite: true },
+    })
+    expect(mockedPrisma.collection.update).not.toHaveBeenCalled()
+    expect(result).toBeNull()
+  })
+
+  it("flips the current favorite value (false → true) read-then-flip", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ isFavorite: false })
+    mockedPrisma.collection.update.mockResolvedValue({ isFavorite: true })
+
+    const result = await toggleCollectionFavorite("user-1", "col-1")
+
+    expect(mockedPrisma.collection.update).toHaveBeenCalledWith({
+      where: { id: "col-1" },
+      data: { isFavorite: true },
+      select: { isFavorite: true },
+    })
+    expect(result).toEqual({ isFavorite: true })
+  })
+
+  it("flips the current favorite value (true → false)", async () => {
+    mockedPrisma.collection.findFirst.mockResolvedValue({ isFavorite: true })
+    mockedPrisma.collection.update.mockResolvedValue({ isFavorite: false })
+
+    const result = await toggleCollectionFavorite("user-1", "col-1")
+
+    expect(mockedPrisma.collection.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { isFavorite: false } })
+    )
+    expect(result).toEqual({ isFavorite: false })
   })
 })

@@ -1,9 +1,10 @@
 "use client"
 
 import type { CSSProperties, KeyboardEvent } from "react"
-import { Pin, Star } from "lucide-react"
+import { Pin } from "lucide-react"
 import { relativeTime } from "@/lib/relative-time"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ImageCard({ item }: { item: ItemWithType }) {
@@ -43,7 +44,7 @@ export function ImageCard({ item }: { item: ItemWithType }) {
         </h3>
         <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground/60">
           {item.isPinned && <Pin className="h-3.5 w-3.5" />}
-          {item.isFavorite && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+          <ItemFavoriteButton itemId={item.id} isFavorite={item.isFavorite} />
           <span className="text-xs">{relativeTime(item.updatedAt)}</span>
         </div>
       </div>

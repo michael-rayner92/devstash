@@ -5,6 +5,7 @@ import { auth } from "@/auth"
 import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
+  toggleItemFavorite as toggleItemFavoriteQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
@@ -160,6 +161,27 @@ export async function deleteItem(itemId: string): Promise<DeleteItemResult> {
     }
 
     return { success: true }
+  } catch {
+    return { success: false, error: "Something went wrong. Please try again." }
+  }
+}
+
+export type ToggleFavoriteResult =
+  | { success: true; data: { isFavorite: boolean } }
+  | { success: false; error: string }
+
+export async function toggleItemFavorite(itemId: string): Promise<ToggleFavoriteResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" }
+  }
+
+  try {
+    const result = await toggleItemFavoriteQuery(session.user.id, itemId)
+    if (!result) {
+      return { success: false, error: "Item not found" }
+    }
+    return { success: true, data: result }
   } catch {
     return { success: false, error: "Something went wrong. Please try again." }
   }
