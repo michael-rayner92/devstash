@@ -253,3 +253,127 @@
   max-width: 100%;
   border-radius: 6px;
 }
+
+/* ============================================================
+   Marketing homepage ("/") — scoped dark palette + animations.
+   This is the prototype's bespoke landing-page look, intentionally
+   NOT the app's OKLCH theme tokens. Everything is scoped under
+   `.home` so it never leaks into the app UI, and the page renders
+   dark regardless of the app's theme toggle. Layout/colour is done
+   with Tailwind utilities that reference these vars (e.g.
+   `bg-(--home-bg-card)`); only palette vars, keyframes, the reveal
+   transition, and the reduced-motion guard live here.
+   ============================================================ */
+.home {
+  /* Item type accents (prototype marketing values, ≠ app system colors) */
+  --home-snippet: #3b82f6;
+  --home-prompt: #f59e0b;
+  --home-command: #06b6d4;
+  --home-note: #22c55e;
+  --home-file: #64748b;
+  --home-image: #ec4899;
+  --home-url: #6366f1;
+
+  /* Dark surfaces */
+  --home-bg: #0a0b0f;
+  --home-bg-elev: #12141a;
+  --home-bg-card: #16181f;
+  --home-border: #23262f;
+
+  --home-text: #e7e9ee;
+  --home-text-dim: #a2a7b4;
+  --home-text-mute: #6c7280;
+
+  --home-accent: #6366f1;
+  --home-accent-2: #8b5cf6;
+
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  background: var(--home-bg);
+  color: var(--home-text);
+}
+
+/* Ambient background glow, kept behind content via the isolate context. */
+.home::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(600px circle at 15% 0%, rgba(99, 102, 241, 0.14), transparent 45%),
+    radial-gradient(700px circle at 85% 10%, rgba(139, 92, 246, 0.1), transparent 45%);
+}
+
+/* Pulsing transform arrow (chaos → order). */
+@keyframes home-arrow-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 8px 26px rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 10px 34px rgba(99, 102, 241, 0.65);
+  }
+}
+/* Mobile variant keeps the 90° rotation while pulsing. */
+@keyframes home-arrow-pulse-v {
+  0%, 100% { transform: rotate(90deg) scale(1); }
+  50% { transform: rotate(90deg) scale(1.12); }
+}
+.home-arrow {
+  animation: home-arrow-pulse 1.8s ease-in-out infinite;
+}
+
+/* Staggered "AI Generated Tags" fade-in. */
+@keyframes home-tag-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+.home-tag {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: home-tag-in 0.4s ease forwards;
+}
+.home-tag:nth-child(1) { animation-delay: 0.15s; }
+.home-tag:nth-child(2) { animation-delay: 0.3s; }
+.home-tag:nth-child(3) { animation-delay: 0.45s; }
+.home-tag:nth-child(4) { animation-delay: 0.6s; }
+.home-tag:nth-child(5) { animation-delay: 0.75s; }
+
+/* Scroll reveal — toggled by the <Reveal> IntersectionObserver wrapper. */
+.home-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.home-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Below the transform's 3-col breakpoint (Tailwind lg), the chaos/arrow/order
+   stack vertically, so the arrow rotates to point down. */
+@media (max-width: 1023.98px) {
+  .home-arrow {
+    animation-name: home-arrow-pulse-v;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home *,
+  .home *::before,
+  .home *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .home-reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .home-tag {
+    opacity: 1;
+    transform: none;
+  }
+}

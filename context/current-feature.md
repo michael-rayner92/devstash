@@ -1,16 +1,28 @@
-# Current Feature
+# Current Feature: Homepage (Marketing Landing Page)
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Replace the placeholder `/` (`src/app/page.tsx`) with the real marketing homepage, rebuilt from the static prototype in `prototypes/homepage/` using the project stack (Next.js App Router + Tailwind v4 + shadcn/ui).
+- Public page — no auth guard, not under the dashboard shell; always renders dark (independent of the app theme toggle).
+- Match the prototype's 7 sections top-to-bottom: fixed Navbar (opaque on scroll), Hero (with chaos → order visual), Features (6 accent-colored cards), AI/Pro (checklist + animated code-editor mockup), Pricing (Free vs Pro, monthly/yearly toggle), CTA, Footer (copyright year on server).
+- Keep everything a **server component** by default; add `'use client'` only for `ChaosAnimation`, `Navbar`/`useScrolled`, `PricingToggle`, and `Reveal`. `page.tsx` stays a server component composing the sections.
+- All links/buttons resolve to real routes: Sign In → `/sign-in`; Get Started / Start Pro Trial / final CTA → `/register`; Features → `#features`; Pricing → `#pricing`. Footer secondary links stay `#` placeholders. Use `next/link` + shadcn `Button` (`asChild`).
+- Port the animations (chaos rAF drift/bounce/rotate/pulse/pointer-repel, arrow pulse, AI tag fade-in, reveal-on-scroll) and honor `prefers-reduced-motion` (static, no rAF/observer).
+- Optional nice-to-have: `page.tsx` may call `auth()` and swap Sign In/Get Started for a single "Go to Dashboard" when a session exists.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Styling:** Tailwind v4 utilities + shadcn `Button` only — no separate `.css` file, no inline `style` except per-item accent color as a CSS custom property (`style={{ "--c": color }}`, same pattern as `ItemCard`). Scope the prototype's bespoke dark palette (surfaces + 7 accents) to a landing-page wrapper class/selector in `globals.css` — do **not** override the app's OKLCH tokens.
+- **Type accent colors (prototype marketing values, intentionally ≠ app system-type colors):** Snippet `#3b82f6`, Prompt `#f59e0b`, Command `#06b6d4`, Note `#22c55e`, File `#64748b`, Image `#ec4899`, URL/Link `#6366f1`. Define the list once; reference across features grid, mini-cards, AI tags.
+- **Fonts:** reuse the app's existing Geist setup from the root layout — do NOT add the prototype's Google Fonts `<link>` (Inter/JetBrains Mono); use the app's mono variable for code/`kbd`.
+- **DRY:** data-drive every repeated block from typed arrays (feature cards, pricing feature lists, footer columns, dashboard-preview mini-cards, chaos icon set). Prefer `lucide-react` icons; keep custom inline SVGs only for brand-specific marks (logo, chaos sources like Notion/Slack) with no Lucide equivalent.
+- **Out of scope:** no Stripe/checkout wiring (buttons just route to `/register`); no new server actions / DB queries / API routes; footer secondary links (Docs, Blog, etc.) stay placeholders.
+- **Verification:** `npm run lint` + `npm run build` pass; in-browser desktop + ~375px mobile — chaos animates & repels from cursor, navbar opacifies on scroll, sections fade in, pricing toggle updates price/period/tagline, all links navigate, no horizontal overflow, no console errors, `prefers-reduced-motion` disables animations. No unit tests expected unless a pure helper lands in `src/lib/` (then colocate a test).
+- Spec source: `context/features/homepage-spec.md`. Prototype reference: `prototypes/homepage/` (built 2026-07-29, see History).
 
 ## History
 
