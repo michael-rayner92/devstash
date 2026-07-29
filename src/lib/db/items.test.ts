@@ -7,6 +7,7 @@ import {
   getItemFileForDownload,
   getItemsByType,
   toggleItemFavorite,
+  toggleItemPin,
   updateItem,
 } from "@/lib/db/items"
 import { prisma } from "@/lib/prisma"
@@ -467,6 +468,7 @@ describe("getItemsByType", () => {
     expect(mockedPrisma.item.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: "user-1", itemType: { name: "snippet" } },
+        orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
         skip: 0,
         take: 21,
       })
@@ -530,5 +532,50 @@ describe("toggleItemFavorite", () => {
       expect.objectContaining({ data: { isFavorite: false } })
     )
     expect(result).toEqual({ isFavorite: false })
+  })
+})
+
+describe("toggleItemPin", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns null and does not update when the item is missing or not owned", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue(null)
+
+    const result = await toggleItemPin("user-1", "item-x")
+
+    expect(mockedPrisma.item.findFirst).toHaveBeenCalledWith({
+      where: { id: "item-x", userId: "user-1" },
+      select: { isPinned: true },
+    })
+    expect(mockedPrisma.item.update).not.toHaveBeenCalled()
+    expect(result).toBeNull()
+  })
+
+  it("flips the current pin value (false → true) read-then-flip", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ isPinned: false })
+    mockedPrisma.item.update.mockResolvedValue({ isPinned: true })
+
+    const result = await toggleItemPin("user-1", "item-1")
+
+    expect(mockedPrisma.item.update).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { isPinned: true },
+      select: { isPinned: true },
+    })
+    expect(result).toEqual({ isPinned: true })
+  })
+
+  it("flips the current pin value (true → false)", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({ isPinned: true })
+    mockedPrisma.item.update.mockResolvedValue({ isPinned: false })
+
+    const result = await toggleItemPin("user-1", "item-1")
+
+    expect(mockedPrisma.item.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { isPinned: false } })
+    )
+    expect(result).toEqual({ isPinned: false })
   })
 })

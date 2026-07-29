@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
-import { createItem, deleteItem, toggleItemFavorite, updateItem } from "@/actions/items"
+import {
+  createItem,
+  deleteItem,
+  toggleItemFavorite,
+  toggleItemPin,
+  updateItem,
+} from "@/actions/items"
 import { auth } from "@/auth"
 import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
   toggleItemFavorite as toggleItemFavoriteQuery,
+  toggleItemPin as toggleItemPinQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
@@ -20,6 +27,7 @@ vi.mock("@/lib/db/items", () => ({
   updateItem: vi.fn(),
   deleteItem: vi.fn(),
   toggleItemFavorite: vi.fn(),
+  toggleItemPin: vi.fn(),
 }))
 
 vi.mock("@/lib/r2", () => ({
@@ -353,6 +361,57 @@ describe("toggleItemFavorite (action)", () => {
     vi.mocked(toggleItemFavoriteQuery).mockRejectedValue(new Error("db down"))
 
     const result = await toggleItemFavorite("item-1")
+
+    expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
+  })
+})
+
+describe("toggleItemPin (action)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("rejects when there is no session", async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    const result = await toggleItemPin("item-1")
+
+    expect(result).toEqual({ success: false, error: "Not authenticated" })
+    expect(vi.mocked(toggleItemPinQuery)).not.toHaveBeenCalled()
+  })
+
+  it("passes the session user id and item id to the query", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemPinQuery).mockResolvedValue({ isPinned: true })
+
+    await toggleItemPin("item-1")
+
+    expect(vi.mocked(toggleItemPinQuery)).toHaveBeenCalledWith("user-1", "item-1")
+  })
+
+  it("returns not found when the query reports the item is missing/unowned", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemPinQuery).mockResolvedValue(null)
+
+    const result = await toggleItemPin("item-x")
+
+    expect(result).toEqual({ success: false, error: "Item not found" })
+  })
+
+  it("returns the new pin state on success", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemPinQuery).mockResolvedValue({ isPinned: true })
+
+    const result = await toggleItemPin("item-1")
+
+    expect(result).toEqual({ success: true, data: { isPinned: true } })
+  })
+
+  it("returns a generic error when the query throws", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleItemPinQuery).mockRejectedValue(new Error("db down"))
+
+    const result = await toggleItemPin("item-1")
 
     expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
   })

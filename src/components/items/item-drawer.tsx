@@ -26,7 +26,8 @@ import { formatSize } from "@/lib/file-constraints"
 import { relativeTime } from "@/lib/relative-time"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
-import { toggleItemFavorite } from "@/actions/items"
+import { usePinToggle } from "@/lib/use-pin-toggle"
+import { toggleItemFavorite, toggleItemPin } from "@/actions/items"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -94,6 +95,9 @@ function DrawerBody({
   const favorite = useFavoriteToggle(detail.id, detail.isFavorite, toggleItemFavorite, (isFav) =>
     onUpdated({ ...detail, isFavorite: isFav })
   )
+  const pin = usePinToggle(detail.id, detail.isPinned, toggleItemPin, (isPinned) =>
+    onUpdated({ ...detail, isPinned })
+  )
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const copyText = detail.content ?? detail.url ?? ""
@@ -146,9 +150,12 @@ function DrawerBody({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground"
-              aria-label={detail.isPinned ? "Pinned" : "Pin"}
+              onClick={pin.toggle}
+              disabled={pin.isPending}
+              aria-pressed={pin.isPinned}
+              aria-label={pin.isPinned ? "Unpin item" : "Pin item"}
             >
-              <Pin className={cn("h-4 w-4", detail.isPinned && "fill-current text-foreground")} />
+              <Pin className={cn("h-4 w-4", pin.isPinned && "fill-current text-foreground")} />
             </Button>
             <Button
               variant="ghost"
