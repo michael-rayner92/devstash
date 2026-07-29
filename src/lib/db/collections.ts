@@ -273,3 +273,28 @@ export async function deleteCollection(
   await prisma.collection.delete({ where: { id: collectionId } })
   return true
 }
+
+/**
+ * Flip a collection's `isFavorite` flag, scoped to its owner. The current value
+ * is read first (owner-scoped `findFirst`) and inverted, so the toggle can never
+ * depend on a client-sent boolean and can never touch another user's collection.
+ * Returns the new `{ isFavorite }`, or `null` if not owned/found.
+ */
+export async function toggleCollectionFavorite(
+  userId: string,
+  collectionId: string
+): Promise<{ isFavorite: boolean } | null> {
+  const existing = await prisma.collection.findFirst({
+    where: { id: collectionId, userId },
+    select: { isFavorite: true },
+  })
+  if (!existing) return null
+
+  const collection = await prisma.collection.update({
+    where: { id: collectionId },
+    data: { isFavorite: !existing.isFavorite },
+    select: { isFavorite: true },
+  })
+
+  return { isFavorite: collection.isFavorite }
+}

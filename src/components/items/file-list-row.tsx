@@ -1,11 +1,12 @@
 "use client"
 
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
-import { Download, File, Pin, Star } from "lucide-react"
+import { Download, File, Pin } from "lucide-react"
 import { relativeTime } from "@/lib/relative-time"
 import { extensionOf, formatSize } from "@/lib/file-constraints"
 import { EXTENSION_ICON } from "@/lib/file-icon"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function FileListRow({ item }: { item: ItemWithType }) {
@@ -48,7 +49,7 @@ export function FileListRow({ item }: { item: ItemWithType }) {
       <div className="flex items-center justify-between gap-4 sm:justify-end">
         <div className="flex items-center gap-3 text-xs text-muted-foreground/80">
           {item.isPinned && <Pin className="h-3.5 w-3.5" />}
-          {item.isFavorite && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+          <ItemFavoriteButton itemId={item.id} isFavorite={item.isFavorite} />
           {item.fileSize != null && <span className="whitespace-nowrap">{formatSize(item.fileSize)}</span>}
           <span className="whitespace-nowrap">{relativeTime(item.updatedAt)}</span>
         </div>

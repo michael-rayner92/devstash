@@ -25,6 +25,8 @@ import { isCodeType, isMarkdownType } from "@/lib/item-fields"
 import { formatSize } from "@/lib/file-constraints"
 import { relativeTime } from "@/lib/relative-time"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
+import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
+import { toggleItemFavorite } from "@/actions/items"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -89,6 +91,9 @@ function DrawerBody({
 }) {
   const [mode, setMode] = useState<"view" | "edit">("view")
   const { copied, copy } = useCopyToClipboard()
+  const favorite = useFavoriteToggle(detail.id, detail.isFavorite, toggleItemFavorite, (isFav) =>
+    onUpdated({ ...detail, isFavorite: isFav })
+  )
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const copyText = detail.content ?? detail.url ?? ""
@@ -149,10 +154,13 @@ function DrawerBody({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground"
-              aria-label={detail.isFavorite ? "Favorited" : "Favorite"}
+              onClick={favorite.toggle}
+              disabled={favorite.isPending}
+              aria-pressed={favorite.isFavorite}
+              aria-label={favorite.isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
               <Star
-                className={cn("h-4 w-4", detail.isFavorite && "fill-amber-400 text-amber-400")}
+                className={cn("h-4 w-4", favorite.isFavorite && "fill-amber-400 text-amber-400")}
               />
             </Button>
             <CloseButton />

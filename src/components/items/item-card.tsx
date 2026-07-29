@@ -1,11 +1,12 @@
 "use client"
 
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
-import { Check, Copy, Pin, Star, File } from "lucide-react"
+import { Check, Copy, Pin, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ItemCard({ item }: { item: ItemWithType }) {
@@ -47,7 +48,7 @@ export function ItemCard({ item }: { item: ItemWithType }) {
         </div>
         <div className="flex items-center gap-1.5 text-muted-foreground/60">
           {item.isPinned && <Pin className="h-3.5 w-3.5" />}
-          {item.isFavorite && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+          <ItemFavoriteButton itemId={item.id} isFavorite={item.isFavorite} />
           {copyText && (
             <button
               type="button"

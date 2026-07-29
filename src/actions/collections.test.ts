@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
-import { createCollection, updateCollection, deleteCollection } from "@/actions/collections"
+import {
+  createCollection,
+  updateCollection,
+  deleteCollection,
+  toggleCollectionFavorite,
+} from "@/actions/collections"
 import { auth } from "@/auth"
 import {
   createCollection as createCollectionQuery,
   updateCollection as updateCollectionQuery,
   deleteCollection as deleteCollectionQuery,
+  toggleCollectionFavorite as toggleCollectionFavoriteQuery,
 } from "@/lib/db/collections"
 import type { CollectionSummary } from "@/lib/db/collections"
 
@@ -17,6 +23,7 @@ vi.mock("@/lib/db/collections", () => ({
   createCollection: vi.fn(),
   updateCollection: vi.fn(),
   deleteCollection: vi.fn(),
+  toggleCollectionFavorite: vi.fn(),
 }))
 
 const SESSION: Session = { user: { id: "user-1" }, expires: "2099-01-01T00:00:00.000Z" }
@@ -181,6 +188,57 @@ describe("deleteCollection (action)", () => {
     vi.mocked(deleteCollectionQuery).mockRejectedValue(new Error("db down"))
 
     const result = await deleteCollection("col-1")
+
+    expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
+  })
+})
+
+describe("toggleCollectionFavorite (action)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("rejects when there is no session", async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    const result = await toggleCollectionFavorite("col-1")
+
+    expect(result).toEqual({ success: false, error: "Not authenticated" })
+    expect(vi.mocked(toggleCollectionFavoriteQuery)).not.toHaveBeenCalled()
+  })
+
+  it("passes the session user id and collection id to the query", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleCollectionFavoriteQuery).mockResolvedValue({ isFavorite: true })
+
+    await toggleCollectionFavorite("col-1")
+
+    expect(vi.mocked(toggleCollectionFavoriteQuery)).toHaveBeenCalledWith("user-1", "col-1")
+  })
+
+  it("returns not found when the query reports no owned collection", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleCollectionFavoriteQuery).mockResolvedValue(null)
+
+    const result = await toggleCollectionFavorite("col-x")
+
+    expect(result).toEqual({ success: false, error: "Collection not found" })
+  })
+
+  it("returns the new favorite state on success", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleCollectionFavoriteQuery).mockResolvedValue({ isFavorite: true })
+
+    const result = await toggleCollectionFavorite("col-1")
+
+    expect(result).toEqual({ success: true, data: { isFavorite: true } })
+  })
+
+  it("returns a generic error when the query throws", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(toggleCollectionFavoriteQuery).mockRejectedValue(new Error("db down"))
+
+    const result = await toggleCollectionFavorite("col-1")
 
     expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
   })

@@ -18,9 +18,18 @@ import { CollectionDeleteDialog } from "@/components/collections/collection-dele
 /**
  * The 3-dots actions menu shown on a collection card. It stops its own clicks
  * from bubbling to the card (which navigates), and hosts the edit + delete
- * dialogs. Favorite is display-only for now (no behavior wired up yet).
+ * dialogs. Favorite state + toggling are owned by the parent `CollectionCard`
+ * (shared with its inline star), passed in here so both stay in sync.
  */
-export function CollectionCardMenu({ collection }: { collection: EditableCollection }) {
+export function CollectionCardMenu({
+  collection,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  collection: EditableCollection
+  isFavorite: boolean
+  onToggleFavorite: () => void
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -53,9 +62,9 @@ export function CollectionCardMenu({ collection }: { collection: EditableCollect
             <Pencil />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => {}}>
-            <Star />
-            Favorite
+          <DropdownMenuItem onSelect={onToggleFavorite}>
+            <Star className={isFavorite ? "fill-amber-400 text-amber-400" : ""} />
+            {isFavorite ? "Unfavorite" : "Favorite"}
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => setDeleteOpen(true)}
