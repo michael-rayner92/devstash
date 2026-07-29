@@ -2,8 +2,7 @@ import { Star } from "lucide-react"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getFavorites } from "@/lib/db/favorites"
-import { FavoriteItemRow } from "@/components/favorites/favorite-item-row"
-import { FavoriteCollectionRow } from "@/components/favorites/favorite-collection-row"
+import { FavoritesList } from "@/components/favorites/favorites-list"
 
 export default async function FavoritesPage() {
   const session = await auth()
@@ -43,33 +42,7 @@ export default async function FavoritesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {items.length > 0 && (
-            <section>
-              <h2 className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Items ({items.length})
-              </h2>
-              <div className="divide-y divide-border/50 border-y border-border/50">
-                {items.map((item) => (
-                  <FavoriteItemRow key={item.id} item={item} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {collections.length > 0 && (
-            <section>
-              <h2 className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Collections ({collections.length})
-              </h2>
-              <div className="divide-y divide-border/50 border-y border-border/50">
-                {collections.map((collection) => (
-                  <FavoriteCollectionRow key={collection.id} collection={collection} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+        <FavoritesList items={items} collections={collections} />
       )}
     </div>
   )
