@@ -75,7 +75,8 @@ export async function getItemsByType(
 
   const items = await prisma.item.findMany({
     where,
-    orderBy: { updatedAt: "desc" },
+    // Pinned items float to the top of the listing, then most-recently-updated.
+    orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
     skip,
     take,
     include: { itemType: true, tags: { orderBy: { name: "asc" } } },
@@ -390,4 +391,29 @@ export async function toggleItemFavorite(
   })
 
   return { isFavorite: updated.isFavorite }
+}
+
+/**
+ * Flip an item's `isPinned` flag, scoped to its owner. Read-then-flip like
+ * `toggleItemFavorite`, so the toggle never trusts a client-sent boolean and
+ * can never touch another user's item. Returns the new `{ isPinned }`, or
+ * `null` if the item isn't owned/found.
+ */
+export async function toggleItemPin(
+  userId: string,
+  itemId: string
+): Promise<{ isPinned: boolean } | null> {
+  const existing = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: { isPinned: true },
+  })
+  if (!existing) return null
+
+  const updated = await prisma.item.update({
+    where: { id: itemId },
+    data: { isPinned: !existing.isPinned },
+    select: { isPinned: true },
+  })
+
+  return { isPinned: updated.isPinned }
 }
