@@ -1,16 +1,24 @@
-# Current Feature
+# Current Feature: Responsive Top Bar (Mobile)
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Declutter the dashboard top bar on small screens so nothing is truncated or crushed.
+- Below `sm` (640px): collapse the search into a single magnifying-glass **icon button** that opens the command palette (instead of the fake input bar, which shrinks to a useless ~35px sliver and reserves 56px of `pr-14` padding for a `⌘K` badge that isn't even rendered on mobile).
+- Show the full fake-input search bar only at `sm` and up (unchanged desktop behaviour).
+- Below `sm`: merge the two ambiguous side-by-side icon-only create buttons ("New collection" `folder+` and "New item" `+`) into a **single `+` menu button** offering "New item" and "New collection".
+- At `sm` and up: keep the existing two labelled create buttons and the full search bar exactly as they are.
+- No change to the command palette, item/collection create dialogs, or any server/DB logic — purely presentational restructuring of the header.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Root cause (measured in-browser at 430px): the header packs six controls (hamburger, wordmark, search, favorites, New collection, New item) into one row; the search is the only `min-w-0` element so it absorbs the squeeze — usable text area collapses to 35px at 430px, ~2px at 375px, 0 at 320px.
+- Files: `src/components/dashboard/dashboard-shell.tsx` (header markup). The `ItemCreateDialog` and `CollectionCreateDialog` are opened via a `trigger` prop today; the mobile merged menu needs to open each dialog programmatically, so the dialogs may need an optional controlled `open`/`onOpenChange` path (check their current API first).
+- Reuse the existing shadcn `DropdownMenu` primitive for the mobile create menu (already used in the sidebar user area).
+- No new server actions or utilities → per coding-standards test scope, no new unit tests expected; verify in-browser + `npm run lint` + `npm run build`.
 
 ## History
 
