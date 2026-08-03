@@ -24,19 +24,30 @@ const EMPTY_FORM = {
 }
 
 interface CollectionCreateDialogProps {
-  trigger: ReactNode
+  /** Optional trigger element. Omit when driving the dialog via `open`/`onOpenChange`. */
+  trigger?: ReactNode
+  /** Controlled open state. When provided, the dialog is driven externally. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function CollectionCreateDialog({ trigger }: CollectionCreateDialogProps) {
+export function CollectionCreateDialog({
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: CollectionCreateDialogProps) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
   const [form, setForm] = useState(EMPTY_FORM)
   const [creating, setCreating] = useState(false)
 
   const canCreate = form.name.trim().length > 0 && !creating
 
   function handleOpenChange(next: boolean) {
-    setOpen(next)
+    if (isControlled) onOpenChange?.(next)
+    else setInternalOpen(next)
     if (!next) {
       setForm(EMPTY_FORM)
     }
@@ -61,7 +72,7 @@ export function CollectionCreateDialog({ trigger }: CollectionCreateDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New collection</DialogTitle>

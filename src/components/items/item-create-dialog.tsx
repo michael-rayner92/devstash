@@ -37,12 +37,22 @@ const EMPTY_FORM = {
 
 interface ItemCreateDialogProps {
   itemTypes: SidebarItemType[]
-  trigger: ReactNode
+  /** Optional trigger element. Omit when driving the dialog via `open`/`onOpenChange`. */
+  trigger?: ReactNode
   /** Preselect this type when opening. Ignored if it isn't a creatable type. */
   initialType?: string
+  /** Controlled open state. When provided, the dialog is driven externally. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreateDialogProps) {
+export function ItemCreateDialog({
+  itemTypes,
+  trigger,
+  initialType,
+  open: controlledOpen,
+  onOpenChange,
+}: ItemCreateDialogProps) {
   const router = useRouter()
   // All system types are creatable (file/image upload to R2; the rest carry a
   // text/url body). Pro gating is unlocked during development.
@@ -51,7 +61,9 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
     (initialType && creatableTypes.some((type) => type.name === initialType)
       ? initialType
       : creatableTypes[0]?.name) ?? ""
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
   const [typeName, setTypeName] = useState(defaultType)
   const [form, setForm] = useState(EMPTY_FORM)
   const [collectionIds, setCollectionIds] = useState<string[]>([])
@@ -74,7 +86,8 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
   }
 
   function handleOpenChange(next: boolean) {
-    setOpen(next)
+    if (isControlled) onOpenChange?.(next)
+    else setInternalOpen(next)
     if (!next) {
       setForm(EMPTY_FORM)
       setCollectionIds([])
@@ -137,7 +150,7 @@ export function ItemCreateDialog({ itemTypes, trigger, initialType }: ItemCreate
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New item</DialogTitle>
