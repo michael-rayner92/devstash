@@ -9,14 +9,36 @@ import { HomeButton } from "./home-button"
 import { ROUTES } from "./data"
 
 const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Features", hash: "#features" },
+  { label: "Pricing", hash: "#pricing" },
 ]
 
+/**
+ * Which page the nav is rendered on. Drives two things: whether the section
+ * links are in-page anchors or route back to "/", and which auth CTA is
+ * suppressed so a button never links to the page you are already on.
+ */
+export type NavbarPage = "home" | "signIn" | "register"
+
 /** Fixed nav that grows opaque once the page is scrolled past the top. */
-export function Navbar({ isAuthenticated }: { isAuthenticated: boolean }) {
+export function Navbar({
+  isAuthenticated,
+  page = "home",
+}: {
+  isAuthenticated: boolean
+  page?: NavbarPage
+}) {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // The marketing sections only exist on "/", so anywhere else the anchors have
+  // to carry the route with them or they are dead links.
+  const sectionHref = (hash: string) => (page === "home" ? hash : `/${hash}`)
+  const showSignIn = !isAuthenticated && page !== "signIn"
+  const showRegister = !isAuthenticated && page !== "register"
+  // Two CTAs plus the hamburger crowd a phone header, so Sign In moves into the
+  // menu — but when Get Started is suppressed there is room to keep it inline.
+  const signInInMenuOnly = showSignIn && showRegister
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
@@ -54,8 +76,8 @@ export function Navbar({ isAuthenticated }: { isAuthenticated: boolean }) {
         <nav aria-label="Primary" className="ml-[14px] hidden gap-[26px] md:flex">
           {NAV_LINKS.map((link) => (
             <Link
-              key={link.href}
-              href={link.href}
+              key={link.hash}
+              href={sectionHref(link.hash)}
               className="text-[0.94rem] font-medium text-(--home-text-dim) transition-colors hover:text-(--home-text)"
             >
               {link.label}
@@ -64,21 +86,24 @@ export function Navbar({ isAuthenticated }: { isAuthenticated: boolean }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-2.5">
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <HomeButton asChild tone="primary">
               <Link href={ROUTES.dashboard}>Go to Dashboard</Link>
             </HomeButton>
-          ) : (
-            <>
-              {/* Below md this lives in the mobile menu instead, so a phone user
-                  still has a sign-in route (previously there was none at all). */}
-              <HomeButton asChild tone="ghost" className="hidden md:inline-flex">
-                <Link href={ROUTES.signIn}>Sign In</Link>
-              </HomeButton>
-              <HomeButton asChild tone="primary">
-                <Link href={ROUTES.register}>Get Started</Link>
-              </HomeButton>
-            </>
+          )}
+          {showSignIn && (
+            <HomeButton
+              asChild
+              tone="ghost"
+              className={cn(signInInMenuOnly && "hidden md:inline-flex")}
+            >
+              <Link href={ROUTES.signIn}>Sign In</Link>
+            </HomeButton>
+          )}
+          {showRegister && (
+            <HomeButton asChild tone="primary">
+              <Link href={ROUTES.register}>Get Started</Link>
+            </HomeButton>
           )}
 
           <HomeButton
@@ -102,15 +127,15 @@ export function Navbar({ isAuthenticated }: { isAuthenticated: boolean }) {
         >
           {NAV_LINKS.map((link) => (
             <Link
-              key={link.href}
-              href={link.href}
+              key={link.hash}
+              href={sectionHref(link.hash)}
               onClick={() => setMenuOpen(false)}
               className="block py-3 text-[0.98rem] font-medium text-(--home-text-dim) transition-colors hover:text-(--home-text)"
             >
               {link.label}
             </Link>
           ))}
-          {!isAuthenticated && (
+          {signInInMenuOnly && (
             <Link
               href={ROUTES.signIn}
               onClick={() => setMenuOpen(false)}
