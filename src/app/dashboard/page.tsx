@@ -73,9 +73,11 @@ export default async function DashboardPage() {
       <section>
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h2 className="text-base font-semibold">Collections</h2>
+            <h2 className="text-lg font-semibold">Collections</h2>
             <p className="text-xs text-muted-foreground">
-              {stats.totalCollections} total &middot; grouped by dominant type
+              {/* Explicit {" "} — the JSX transform strips the leading space of
+                  the text node after the expression, rendering "5total". */}
+              {stats.totalCollections}{" "}total &middot; grouped by dominant type
             </p>
           </div>
           <Link
@@ -85,7 +87,7 @@ export default async function DashboardPage() {
             View all
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {collections.map((col) => (
             <CollectionCard key={col.id} collection={col} />
           ))}
@@ -95,7 +97,7 @@ export default async function DashboardPage() {
       {/* Pinned items — only shown when there are pinned items */}
       {pinnedItems.length > 0 && (
         <section>
-          <h2 className="mb-3 text-base font-semibold">Pinned</h2>
+          <h2 className="mb-3 text-lg font-semibold">Pinned</h2>
           <div className="space-y-2">
             {pinnedItems.map((item) => (
               <ItemRow key={item.id} item={item} />
@@ -106,7 +108,7 @@ export default async function DashboardPage() {
 
       {/* Recent items */}
       <section>
-        <h2 className="mb-3 text-base font-semibold">Recent items</h2>
+        <h2 className="mb-3 text-lg font-semibold">Recent items</h2>
         <div className="space-y-2">
           {recentItems.map((item) => (
             <ItemRow key={item.id} item={item} />

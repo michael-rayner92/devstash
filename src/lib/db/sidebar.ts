@@ -19,6 +19,8 @@ export type SidebarCollection = {
   isFavorite: boolean
   itemCount: number
   dominantColor: string | null
+  /** Type name behind `dominantColor`, so the color isn't the only cue. */
+  dominantName: string | null
 }
 
 export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
@@ -68,6 +70,7 @@ export async function getSidebarCollections(userId: string): Promise<SidebarColl
       isFavorite: col.isFavorite,
       itemCount: col.items.length,
       dominantColor: dominantType?.color ?? null,
+      dominantName: dominantType?.name ?? null,
     }
   })
 }

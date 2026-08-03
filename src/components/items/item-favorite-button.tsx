@@ -50,7 +50,9 @@ export function ItemFavoriteButton({
       aria-pressed={isFavorite}
       aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
       className={cn(
-        "transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none",
+        // p-1.5 lifts the 14px icon to a 26x26 hit area, over the WCAG 2.5.8
+        // 24x24 floor. The -m-1.5 keeps the visual layout unchanged.
+        "-m-1.5 rounded-md p-1.5 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100",
         className
       )}

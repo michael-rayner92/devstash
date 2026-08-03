@@ -35,6 +35,10 @@ export function HomeButton({
       variant="ghost"
       className={cn(
         "h-auto rounded-[10px] border px-[18px] py-[10px] text-[0.92rem] font-semibold transition-[transform,background-color,box-shadow,border-color] duration-150 hover:-translate-y-px active:translate-y-0",
+        // shadcn's default 1px `ring-ring` (~#767676) is invisible against the
+        // primary tone's purple gradient and its glow shadow. A light 2px ring
+        // offset from the page background reads on every tone.
+        "focus-visible:ring-2 focus-visible:ring-white/90 focus-visible:ring-offset-2 focus-visible:ring-offset-(--home-bg)",
         large && "rounded-xl px-[26px] py-[14px] text-base",
         block && "w-full",
         toneClass[tone],

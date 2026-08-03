@@ -3,6 +3,7 @@
 import type { CSSProperties, KeyboardEvent } from "react"
 import { Pin, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
+import { typeTextColor } from "@/lib/type-color"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
 import type { ItemWithType } from "@/lib/db/items"
 
@@ -54,7 +55,10 @@ export function ItemRow({ item }: { item: ItemWithType }) {
             ))}
           </div>
         )}
-        <span className="rounded-md px-1.5 py-0.5 text-xs font-medium" style={{ backgroundColor: `${color}20`, color }}>
+        <span
+          className="rounded-md px-1.5 py-0.5 text-xs font-medium"
+          style={{ backgroundColor: `${color}20`, color: typeTextColor(color) }}
+        >
           {type.name}
         </span>
       </div>

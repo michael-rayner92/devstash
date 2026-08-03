@@ -1,11 +1,18 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { cn } from "@/lib/utils"
 import { CHAOS_SOURCES } from "./icons"
 
 const ICON = 52
 const REPEL_RADIUS = 90
 const MAX_SPEED = 1.6
+/**
+ * Inset the travel area so the rotate + scale-pulse transform can't push a node
+ * past the container's `overflow: hidden` edge (which rendered as a half-drawn
+ * icon). A 52x68 node rotated ~13deg and scaled 1.06 grows ~7px per side.
+ */
+const PAD = 8
 
 interface PhysicsNode {
   x: number
@@ -50,15 +57,28 @@ export function ChaosAnimation() {
     }
     window.addEventListener("resize", measure, { passive: true })
 
+    // Nodes are taller than they are wide (icon + label), and the ones hidden
+    // below `sm` measure 0 — so fall back to the known design size rather than
+    // letting a 0 collapse the clamp range.
+    const sizeOf = (el: HTMLDivElement) => ({
+      w: el.offsetWidth || ICON,
+      h: el.offsetHeight || ICON,
+    })
+    const maxX = (i: number, w: number) =>
+      Math.max(PAD, w - sizeOf(els[i]).w - PAD)
+    const maxY = (i: number, h: number) =>
+      Math.max(PAD, h - sizeOf(els[i]).h - PAD)
+
     // Seed positions spread across the box in a 4-column grid.
     const cols = 4
     const cw = bounds.width || 300
     const ch = bounds.height || 320
-    const cellW = (cw - ICON) / (cols - 1 || 1)
-    const cellH = ch - ICON
+    const rows = Math.max(1, Math.ceil(els.length / cols))
     nodes.forEach((n, i) => {
-      n.x = Math.max(0, Math.min(cw - ICON, (i % cols) * cellW))
-      n.y = Math.max(0, Math.min(ch - ICON, Math.floor(i / cols) * cellH))
+      const spanX = maxX(i, cw) - PAD
+      const spanY = maxY(i, ch) - PAD
+      n.x = PAD + ((i % cols) / (cols - 1 || 1)) * spanX
+      n.y = PAD + (Math.floor(i / cols) / (rows - 1 || 1)) * spanY
     })
 
     // Pointer repel — track pointer in container-local coordinates.
@@ -122,19 +142,22 @@ export function ChaosAnimation() {
         n.x += n.vx
         n.y += n.vy
 
-        // Bounce off walls.
-        if (n.x <= 0) {
-          n.x = 0
+        // Bounce off walls, measured per node and inset by PAD so the rotate /
+        // scale transform stays inside the clipped container.
+        const right = maxX(i, w)
+        const bottom = maxY(i, h)
+        if (n.x <= PAD) {
+          n.x = PAD
           n.vx = Math.abs(n.vx)
-        } else if (n.x >= w - ICON) {
-          n.x = w - ICON
+        } else if (n.x >= right) {
+          n.x = right
           n.vx = -Math.abs(n.vx)
         }
-        if (n.y <= 0) {
-          n.y = 0
+        if (n.y <= PAD) {
+          n.y = PAD
           n.vy = Math.abs(n.vy)
-        } else if (n.y >= h - ICON) {
-          n.y = h - ICON
+        } else if (n.y >= bottom) {
+          n.y = bottom
           n.vy = -Math.abs(n.vy)
         }
 
@@ -174,7 +197,12 @@ export function ChaosAnimation() {
             ref={(el) => {
               nodeRefs.current[i] = el
             }}
-            className="absolute left-0 top-0 grid h-auto min-h-[52px] w-[52px] place-items-center rounded-xl border border-(--home-border) bg-(--home-bg-card) text-(--home-text-dim) shadow-[0_6px_18px_rgba(0,0,0,0.4)] will-change-transform"
+            className={cn(
+              "absolute left-0 top-0 h-auto min-h-[52px] w-[52px] place-items-center rounded-xl border border-(--home-border) bg-(--home-bg-card) text-(--home-text-dim) shadow-[0_6px_18px_rgba(0,0,0,0.4)] will-change-transform",
+              // Below sm the box is only ~327x320, where 8 nodes stack and the
+              // labels become unreadable — thin the set out to 5.
+              i >= 5 ? "hidden sm:grid" : "grid"
+            )}
           >
             <Icon />
             <span className="text-[0.62rem] font-semibold">{src.label}</span>

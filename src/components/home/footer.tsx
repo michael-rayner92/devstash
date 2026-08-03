@@ -2,8 +2,9 @@ import Link from "next/link"
 import { Brand } from "./brand"
 import { FOOTER_COLUMNS } from "./data"
 
+// py-1 lifts the hit area over the 24px WCAG 2.5.8 floor (was 22px tall).
 const LINK_CLASS =
-  "text-[0.92rem] text-(--home-text-dim) transition-colors hover:text-(--home-text)"
+  "py-1 text-[0.92rem] text-(--home-text-dim) transition-colors hover:text-(--home-text)"
 
 export function Footer() {
   const year = new Date().getFullYear()
@@ -36,12 +37,14 @@ export function Footer() {
 
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-2.5 border-t border-(--home-border) px-6 py-5 text-[0.86rem] text-(--home-text-mute) max-sm:justify-center max-sm:text-center">
         <span>© {year} DevStash. All rights reserved.</span>
-        <span className="flex gap-1">
-          <Link href="#" className="hover:text-(--home-text)">
+        {/* Legal links sit on --home-text-dim rather than inheriting the muted
+            footer color, so they clear AA as body-size text. */}
+        <span className="flex items-center gap-1">
+          <Link href="#" className="px-1 py-1 text-(--home-text-dim) hover:text-(--home-text)">
             Privacy
           </Link>
           ·
-          <Link href="#" className="hover:text-(--home-text)">
+          <Link href="#" className="px-1 py-1 text-(--home-text-dim) hover:text-(--home-text)">
             Terms
           </Link>
         </span>
