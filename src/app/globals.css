@@ -270,7 +270,9 @@
   --home-prompt: #f59e0b;
   --home-command: #06b6d4;
   --home-note: #22c55e;
-  --home-file: #64748b;
+  /* Lifted from the prototype's #64748b, which was so desaturated against the
+     dark card that the "Files & Docs" accent read as a missing border. */
+  --home-file: #94a3b8;
   --home-image: #ec4899;
   --home-url: #6366f1;
 
@@ -282,10 +284,15 @@
 
   --home-text: #e7e9ee;
   --home-text-dim: #a2a7b4;
-  --home-text-mute: #6c7280;
+  /* Was #6c7280, which measured 3.68-4.08:1 against the dark surfaces here —
+     under the 4.5:1 AA floor for the small text it is used on. */
+  --home-text-mute: #8b92a3;
 
   --home-accent: #6366f1;
   --home-accent-2: #8b5cf6;
+  /* Lightened accent for small text (section eyebrows). The base --home-accent
+     measures 4.4:1 at 12.8px, so it stays for gradients/fills only. */
+  --home-accent-text: #a5a8f7;
 
   position: relative;
   isolation: isolate;

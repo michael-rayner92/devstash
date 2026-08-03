@@ -5,6 +5,7 @@ import { Check, Copy, Pin, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
+import { typeTextColor } from "@/lib/type-color"
 import { useItemDrawer } from "@/components/items/item-drawer-provider"
 import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
@@ -42,7 +43,10 @@ export function ItemCard({ item }: { item: ItemWithType }) {
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Icon className="h-4 w-4" style={{ color }} />
-          <span className="text-xs font-medium uppercase tracking-wide" style={{ color }}>
+          <span
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: typeTextColor(color) }}
+          >
             {type.name}
           </span>
         </div>

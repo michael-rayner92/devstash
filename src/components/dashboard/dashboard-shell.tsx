@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { FolderPlus, PanelLeft, Plus, Search, Star } from "lucide-react"
+import { FolderPlus, PanelLeft, Plus, Search, Star, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ItemDrawerProvider } from "@/components/items/item-drawer-provider"
 import { ItemCreateDialog } from "@/components/items/item-create-dialog"
 import { CollectionCreateDialog } from "@/components/collections/collection-create-dialog"
@@ -76,9 +76,11 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
           <span className="text-sm font-semibold">DevStash</span>
         </div>
 
-        {/* Center: full search bar. Hidden below sm — on mobile it shrank to a
-            ~35px sliver, so it becomes an icon button in the right group instead. */}
-        <div className="relative hidden w-full max-w-md min-w-0 sm:block">
+        {/* Center: full search bar. Hidden below md — it is the only min-w-0
+            sibling, so it absorbs all the squeeze: at 640px it measured a 68px
+            text sliver while both create buttons kept full labels. Below md it
+            becomes an icon button in the right group instead. */}
+        <div className="relative hidden w-full max-w-md min-w-0 md:block">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -99,7 +101,7 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
             variant="ghost"
             size="icon"
             onClick={() => setPaletteOpen(true)}
-            className="sm:hidden"
+            className="md:hidden"
             aria-label="Search"
           >
             <Search className="h-5 w-5" />
@@ -115,12 +117,12 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
           <Button
             variant="outline"
             onClick={() => setCollectionDialogOpen(true)}
-            className="hidden sm:inline-flex"
+            className="hidden md:inline-flex"
           >
             <FolderPlus />
             New collection
           </Button>
-          <Button onClick={() => setItemDialogOpen(true)} className="hidden sm:inline-flex">
+          <Button onClick={() => setItemDialogOpen(true)} className="hidden md:inline-flex">
             <Plus />
             New item
           </Button>
@@ -128,7 +130,7 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
           {/* Mobile create menu — merges both create actions into one "+". */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Button size="icon" className="sm:hidden" aria-label="Create new">
+              <Button size="icon" className="md:hidden" aria-label="Create new">
                 <Plus className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -164,8 +166,16 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
 
       {/* Mobile Sheet — always a drawer */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="flex w-64 flex-col p-0">
+        <SheetContent side="left" className="flex w-64 flex-col overflow-hidden p-0">
           <SheetTitle>Navigation</SheetTitle>
+          {/* Esc / outside-click were the only ways out before. */}
+          <div className="flex h-14 shrink-0 items-center justify-end border-b border-border px-2">
+            <SheetClose asChild>
+              <Button variant="ghost" size="icon" aria-label="Close navigation">
+                <X className="h-5 w-5" />
+              </Button>
+            </SheetClose>
+          </div>
           <SidebarContent {...sidebarProps} />
         </SheetContent>
       </Sheet>

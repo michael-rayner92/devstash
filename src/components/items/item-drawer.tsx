@@ -24,6 +24,7 @@ import { iconMap } from "@/lib/icon-map"
 import { isCodeType, isMarkdownType } from "@/lib/item-fields"
 import { formatSize } from "@/lib/file-constraints"
 import { relativeTime } from "@/lib/relative-time"
+import { typeTextColor } from "@/lib/type-color"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
 import { usePinToggle } from "@/lib/use-pin-toggle"
@@ -134,7 +135,7 @@ function DrawerBody({
             </div>
             <span
               className="text-xs font-semibold uppercase tracking-wide"
-              style={{ color }}
+              style={{ color: typeTextColor(color) }}
             >
               {detail.itemType.name}
             </span>

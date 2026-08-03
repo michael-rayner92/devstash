@@ -2,13 +2,56 @@
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+UI review fixes for the marketing homepage and the dashboard, from an in-browser
+review at 375 / 768 / 1280px. Ordered by severity as reported.
+
+1. Homepage has no navigation below `md` — add a mobile menu so `Sign In`
+   (currently 0×0 at 375px) and the section links are reachable on a phone.
+2. Gradient/primary `HomeButton` has no visible focus ring against the purple
+   gradient — WCAG 2.4.7 fail. Use a light 2px ring with an offset.
+3. Mobile dashboard drawer clips its own footer (Upgrade to Pro + Sign out are
+   off-screen at 375×667) and has no close button.
+4. Dashboard collections grid disagrees with the stats grid at 1024px
+   (`lg:grid-cols-4` vs `xl:grid-cols-4`) — add `lg:grid-cols-3`.
+5. `--home-text-mute` (#6c7280) measures 3.68–4.08:1 — below AA. Lighten it, and
+   move the footer's Privacy/Terms links onto a passing token.
+6. At 640–767px the dashboard search collapses to a 68px sliver while both
+   create buttons keep full labels — hold the mobile treatment until `md`.
+7. Touch targets under the 24×24 WCAG 2.5.8 minimum (collection-card star 16×16,
+   footer links 22px tall, pricing toggle 50×28).
+8. `snippet` type badge measures 4.22:1 as 12px text — lift text usages of the
+   item-type color without changing the stored colors.
+9. Collection cards are `role="button"` divs, so cmd-click / middle-click / URL
+   preview are all lost — give them real link semantics.
+10. Dashboard `h2` section headings and `h3` card titles are both 16px/600, so
+    sections don't read as containers.
+11. Marketing "Files & Docs" accent (#64748b) disappears against the dark card
+    while its five siblings get saturated accents.
+12. Chaos icons clip at the container edge and overlap unreadably at 375px.
+13. Dominant collection type is communicated by color alone (sidebar dots, card
+    top bars) with no text alternative.
 
 ## Notes
+
+- **Out of scope — social proof.** The review's "no social proof anywhere on the
+  homepage" finding is real, but every fix for it (testimonials, user counts,
+  logo strips, GitHub stars) means inventing claims about a product that has no
+  users yet. Needs real content from the user, so it is deliberately not
+  implemented here.
+- The reveal-on-scroll blank-page-in-full-page-capture finding was not
+  reproducible as a user-facing bug (normal scrolling and the reduced-motion
+  fallback both work), so it is left alone.
+- The inert "Add item type" `+` button in the sidebar is **removed** rather than
+  padded to 24×24 — enlarging the hit area of a control that does nothing makes
+  it easier to hit a dead end. Custom types are a post-launch Pro feature.
+- Purely presentational except for `src/lib/type-color.ts`, which is a new unit
+  tested utility.
+
+## History
 
 <!-- Additional context, constraints, or details from spec -->
 
