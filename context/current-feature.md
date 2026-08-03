@@ -1,18 +1,38 @@
-# Current Feature
+# Current Feature: Auth Pages Top Nav
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- The homepage top nav (`src/components/home/navbar.tsx`) renders at the top of `/sign-in` and `/register`.
+- Nav looks and behaves identically to the homepage: fixed, scroll-opacity, brand mark, Features/Pricing links, right-hand auth actions, and the mobile hamburger menu below `md`.
+- Nav links (`Features`, `Pricing`) navigate back to the homepage sections from these pages (`/#features`, `/#pricing`) instead of dead in-page anchors.
+- The auth card no longer sits under the fixed nav — it stays vertically centred in the remaining space with no overlap at 375 / 768 / 1280px.
+- The nav's own dark marketing styling renders correctly on both pages (it depends on `.home`-scoped CSS vars).
+- Nav auth actions stay sensible on each page (no "Sign In" button on `/sign-in`, no "Get Started" on `/register`).
+- Homepage nav is unchanged — same look, same anchor behaviour, no regressions.
 
 ## Notes
 
-## History
+### Constraints found in the current code
 
-<!-- Additional context, constraints, or details from spec -->
+- `Navbar` is a `"use client"` component taking `isAuthenticated: boolean`; the auth pages are currently plain server components with no `auth()` call, so they'll need one (the homepage already does this in `src/app/page.tsx`).
+- `NAV_LINKS` in `navbar.tsx` is hard-coded to `#features` / `#pricing`. Those only resolve on `/`. Needs to become homepage-relative (`/#features`) or be passed in per page.
+- All of the nav's colors come from CSS vars scoped under `.home` in `globals.css` (`--home-bg`, `--home-border`, `--home-text-dim`, etc.), plus `HomeButton`'s tones. Without a `.home` ancestor the nav will render unstyled/wrong on the auth pages — so either the auth pages get wrapped in `.home`, or the vars get lifted out of that scope. Note `.home` also carries `isolation: isolate` and a fixed `::before` ambient glow, which would come along with the wrapper.
+- Both auth pages use `flex min-h-screen items-center justify-center` with `bg-background` (the app's OKLCH token, not the marketing dark palette). The nav is `fixed` at 66px tall, so the centring needs a top offset, and the page background may need to match the nav's palette to avoid a visible seam.
+- The `md`-and-below mobile menu panel also renders a "Sign In" link when signed out — same per-page suppression consideration as the header buttons.
+
+### Decisions to confirm at `start`
+
+- Whether the auth pages adopt the full marketing dark background (`.home` wrapper) or keep `bg-background` with the nav styled to sit on it.
+- Whether to suppress the current page's own CTA in the nav, or leave both buttons on both pages for simplicity.
+
+### Scope
+
+- Presentational only — no server actions, DB queries, or auth logic changes. Likely no new unit tests (nothing under `src/actions/` or `src/lib/`), per the coding-standards test scope.
+- Out of scope: the other auth routes (`/forgot-password`, `/reset-password`, `/check-email`) unless explicitly extended.
 
 ## History
 
