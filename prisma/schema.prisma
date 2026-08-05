@@ -29,6 +29,13 @@ model User {
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
 
+  // Stripe subscription detail, written only by the webhook (Phase 2).
+  // Status is Stripe's own vocabulary: active | trialing | past_due |
+  // canceled | unpaid | incomplete | incomplete_expired | paused.
+  stripeSubscriptionStatus String?
+  stripePriceId            String?   // which plan — monthly or yearly
+  stripeCurrentPeriodEnd   DateTime? // renewal / expiry date for the billing UI
+
   // Monaco editor preferences (font size, tab size, word wrap, minimap, theme).
   // Normalized against defaults on read — see src/lib/editor-preferences.ts.
   editorPreferences    Json?

@@ -21,21 +21,40 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) return token
+      if (!token.sub) return token
+
       const dbUser = await prisma.user.findUnique({
-        where: { id: token.sub! },
-        select: { passwordChangedAt: true },
+        where: { id: token.sub },
+        select: { passwordChangedAt: true, isPro: true },
       })
+
+      // Password-change invalidation only applies to an existing token being
+      // re-validated — on the sign-in pass (`user` present) there is no prior
+      // `iat` to compare against.
       if (
+        !user &&
         dbUser?.passwordChangedAt &&
         token.iat! < dbUser.passwordChangedAt.getTime() / 1000
       ) {
         return null
       }
+
+      // Always synced from the DB (rather than set once at sign-in) so that a
+      // Stripe webhook flipping `isPro` is picked up on the next session
+      // validation — a page reload after checkout is enough.
+      //
+      // On the re-validation path this is free: the row is already being read
+      // for passwordChangedAt. The sign-in pass does now cost one query it
+      // previously skipped (it used to `return token` early), which is the
+      // price of having `isPro` correct on the very first request after
+      // sign-in rather than one validation later.
+      token.isPro = dbUser?.isPro ?? false
+
       return token
     },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub
+      session.user.isPro = token.isPro ?? false
       return session
     },
   },

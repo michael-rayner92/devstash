@@ -13,7 +13,7 @@ vi.mock("@/lib/db/editor-preferences", () => ({
   updateEditorPreferences: vi.fn(),
 }))
 
-const SESSION: Session = { user: { id: "user-1" }, expires: "2099-01-01T00:00:00.000Z" }
+const SESSION: Session = { user: { id: "user-1", isPro: false }, expires: "2099-01-01T00:00:00.000Z" }
 
 const VALID: EditorPreferences = {
   fontSize: 16,

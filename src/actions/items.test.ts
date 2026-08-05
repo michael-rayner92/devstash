@@ -35,7 +35,7 @@ vi.mock("@/lib/r2", () => ({
   objectKeyFromUrl: vi.fn((url: string) => url),
 }))
 
-const SESSION: Session = { user: { id: "user-1" }, expires: "2099-01-01T00:00:00.000Z" }
+const SESSION: Session = { user: { id: "user-1", isPro: false }, expires: "2099-01-01T00:00:00.000Z" }
 
 const VALID_INPUT = {
   title: "Reset local branch",

@@ -31,7 +31,7 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }))
 
-const SESSION: Session = { user: { id: "user-1" }, expires: "2099-01-01T00:00:00.000Z" }
+const SESSION: Session = { user: { id: "user-1", isPro: false }, expires: "2099-01-01T00:00:00.000Z" }
 
 // Prisma's generated method types are complex overloaded generics that don't
 // play well with vi.mocked(); narrow to the shape this test actually needs.
