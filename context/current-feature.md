@@ -2,19 +2,25 @@
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+Complete
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Free (non-Pro) users visiting `/items/files` or `/items/images` see an upgrade prompt instead of the file/image listing.
+- Pro users see the normal listing, unchanged.
+- Gate respects the existing `BILLING_ENFORCED` kill-switch (`src/lib/usage-limits.ts`) — during dev with enforcement off, everyone still sees the normal listing, consistent with every other Pro gate in the app (upload gate, item/collection limits).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Reuse `isFileType` (`src/lib/item-fields.ts`) to identify file/image types, and `getPlanLimits(isPro).uploads` (`src/lib/usage-limits.ts`) as the permission signal — same signal already used to block free-user uploads in `POST /api/upload`.
+- New small "upgrade required" panel component, styled consistent with the existing dashed-border empty state, with a CTA linking to `/settings#billing` (same destination as the sidebar's existing "Upgrade to Pro" CTA).
+- Scope: gates the `/items/[type]` listing page only. Does not touch upload API gating, drawer/download routes, or sidebar link hrefs (already correct).
 
 ## History
 
 <!-- Keep this updated. Earliest to latest -->
+
+- **2026-08-05** — Gate `/items/files` and `/items/images` behind Pro completed. Free users hitting either route directly now see an upgrade panel instead of the listing; Pro users see the normal page, unchanged. New `src/components/items/upgrade-required.tsx` (`UpgradeRequired`) — dashed-border panel matching the existing empty-state style, `Lock` icon, "{type}s are a Pro feature" heading, and an "Upgrade to Pro" button linking to `/settings#billing` (same destination as the sidebar's existing CTA). `src/app/items/[type]/page.tsx` computes `requiresUpgrade = isFileType(typeName) && !getPlanLimits(dbUser?.isPro ?? false).uploads` — reusing the same `isFileType` (`src/lib/item-fields.ts`) and `getPlanLimits(...).uploads` (`src/lib/usage-limits.ts`) signals already used to gate the upload API, so this respects the existing `BILLING_ENFORCED` kill-switch: with enforcement off (the dev default), free users still see the normal listing, consistent with every other Pro gate in the app. When gated: the items query is skipped, the create button is hidden, and the header subtitle reads "Pro feature" instead of the item count. No new server actions/utilities/schema changes, so no new unit tests (purely presentational, reusing already-tested logic) — coding-standards test scope unaffected. Verified in-browser (Playwright) with the demo user: enforcement off → normal (empty) listing on both routes, zero console errors; enforcement temporarily flipped to `true` → both routes replaced by the upgrade panel with a working `/settings#billing` link, sidebar create buttons/count hidden; demo user temporarily flipped to `isPro=true` in the dev DB → normal listing restored with no gate; both the DB flag and `BILLING_ENFORCED` reverted to their original values afterward. Lint + build + 257 tests pass. Branched from `main` as `feature/gate-file-image-listings` (also carries the still-uncommitted seed.ts trim-to-3-collections change from the prior task, per user direction, to be split into its own commit before merge).
 
 - **2026-04-16** — Initial Next.js + Tailwind CSS setup bootstrapped from `create-next-app`. Removed default placeholder assets, updated `globals.css` and `page.tsx`, added project context files and CLAUDE.md. Pushed to `https://github.com/michael-rayner92/devstash.git`.
 - **2026-04-20** — Dashboard UI Phase 1 completed. ShadCN setup (manual install), `components.json`, `globals.css` updated with OKLCH color variables and Tailwind v4 `@theme inline` mapping, dark mode by default, `/dashboard` route with topbar (search + New item button), sidebar placeholder, and main area placeholder.

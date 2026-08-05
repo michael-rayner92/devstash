@@ -5,13 +5,16 @@ import { prisma } from "@/lib/prisma"
 import { getItemTypeByName, getItemsByType } from "@/lib/db/items"
 import { getSidebarItemTypes } from "@/lib/db/sidebar"
 import { iconMap } from "@/lib/icon-map"
+import { isFileType } from "@/lib/item-fields"
 import { parsePageParam } from "@/lib/pagination"
+import { getPlanLimits } from "@/lib/usage-limits"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
 import { ImageCard } from "@/components/items/image-card"
 import { ItemCard } from "@/components/items/item-card"
 import { FileListRow } from "@/components/items/file-list-row"
 import { ItemCreateDialog } from "@/components/items/item-create-dialog"
+import { UpgradeRequired } from "@/components/items/upgrade-required"
 
 export default async function ItemsByTypePage({
   params,
@@ -36,14 +39,22 @@ export default async function ItemsByTypePage({
     ? await prisma.user.findUnique({ where: { id: userId } })
     : null
 
-  const { items, totalCount, page, totalPages } = dbUser
-    ? await getItemsByType(dbUser.id, typeName, parsePageParam(pageParam))
-    : { items: [], totalCount: 0, page: 1, totalPages: 1 }
+  // File/image uploads are Pro-only; a free user hitting this route directly
+  // sees an upgrade prompt instead of the listing. Gated behind the same
+  // `getPlanLimits(...).uploads` signal as the upload API, so it respects the
+  // BILLING_ENFORCED kill-switch like every other Pro gate in the app.
+  const requiresUpgrade =
+    isFileType(typeName) && !getPlanLimits(dbUser?.isPro ?? false).uploads
+
+  const { items, totalCount, page, totalPages } =
+    !requiresUpgrade && dbUser
+      ? await getItemsByType(dbUser.id, typeName, parsePageParam(pageParam))
+      : { items: [], totalCount: 0, page: 1, totalPages: 1 }
   const Icon = iconMap[itemType.icon] ?? File
 
   // All system types are creatable (file/image upload to R2; the rest carry a
   // text/url body).
-  const isCreatable = itemTypes.some((t) => t.name === typeName)
+  const isCreatable = !requiresUpgrade && itemTypes.some((t) => t.name === typeName)
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
@@ -55,7 +66,9 @@ export default async function ItemsByTypePage({
           <div>
             <h1 className="text-2xl font-bold tracking-tight capitalize">{itemType.name}s</h1>
             <p className="text-sm text-muted-foreground">
-              {totalCount} {totalCount === 1 ? "item" : "items"}
+              {requiresUpgrade
+                ? "Pro feature"
+                : `${totalCount} ${totalCount === 1 ? "item" : "items"}`}
             </p>
           </div>
         </div>
@@ -78,7 +91,9 @@ export default async function ItemsByTypePage({
         )}
       </div>
 
-      {items.length > 0 ? (
+      {requiresUpgrade ? (
+        <UpgradeRequired typeName={itemType.name} />
+      ) : items.length > 0 ? (
         <>
           {typeName === "file" ? (
             <div className="rounded-xl border border-border">
