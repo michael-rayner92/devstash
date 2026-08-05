@@ -9,6 +9,8 @@ import {
   toggleCollectionFavorite as toggleCollectionFavoriteQuery,
 } from "@/lib/db/collections"
 import type { CollectionSummary } from "@/lib/db/collections"
+import { getPlanUsage } from "@/lib/db/billing"
+import { collectionLimitError } from "@/lib/usage-limits"
 
 // Trim strings and collapse empties to null; leave non-strings (e.g. null) alone.
 const trimmedOrNull = (v: unknown) =>
@@ -42,6 +44,13 @@ export async function createCollection(
   }
 
   try {
+    // Free-plan collection limit; `error` already renders as a Sonner toast.
+    const usage = await getPlanUsage(session.user.id)
+    if (!usage) return { success: false, error: "Account not found" }
+
+    const limitError = collectionLimitError(usage.isPro, usage.collectionCount)
+    if (limitError) return { success: false, error: limitError }
+
     const created = await createCollectionQuery(session.user.id, parsed.data)
     return { success: true, data: created }
   } catch {

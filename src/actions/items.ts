@@ -10,6 +10,8 @@ import {
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
+import { getPlanUsage } from "@/lib/db/billing"
+import { itemLimitError } from "@/lib/usage-limits"
 import { deleteFromR2, objectKeyFromUrl } from "@/lib/r2"
 
 export interface UpdateItemInput {
@@ -125,6 +127,14 @@ export async function createItem(input: CreateItemInput): Promise<CreateItemResu
   }
 
   try {
+    // Free-plan item limit. The client already surfaces `error` as a Sonner
+    // toast, so the limit message reaches the user with no UI change.
+    const usage = await getPlanUsage(session.user.id)
+    if (!usage) return { success: false, error: "Account not found" }
+
+    const limitError = itemLimitError(usage.isPro, usage.itemCount)
+    if (limitError) return { success: false, error: limitError }
+
     const created = await createItemQuery(session.user.id, parsed.data)
     if (!created) {
       return { success: false, error: "Invalid item type" }

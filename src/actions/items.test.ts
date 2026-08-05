@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
 import {
   createItem,
@@ -16,10 +16,16 @@ import {
   updateItem as updateItemQuery,
 } from "@/lib/db/items"
 import type { ItemDetail } from "@/lib/db/items"
+import { getPlanUsage } from "@/lib/db/billing"
+import { FREE_ITEM_LIMIT } from "@/lib/usage-limits"
 import { deleteFromR2 } from "@/lib/r2"
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
+}))
+
+vi.mock("@/lib/db/billing", () => ({
+  getPlanUsage: vi.fn(),
 }))
 
 vi.mock("@/lib/db/items", () => ({
@@ -133,6 +139,17 @@ describe("updateItem (action)", () => {
 describe("createItem (action)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Well under the Free limits by default, so the cases below exercise
+    // validation rather than the plan gate.
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: 0,
+      collectionCount: 0,
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   const VALID_CREATE_INPUT = {
@@ -234,6 +251,79 @@ describe("createItem (action)", () => {
     const result = await createItem(VALID_CREATE_INPUT)
 
     expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
+  })
+
+  it("blocks a Free user who is at the item limit", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "true")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: FREE_ITEM_LIMIT,
+      collectionCount: 0,
+    })
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({
+      success: false,
+      error: `Free plan is limited to ${FREE_ITEM_LIMIT} items. Upgrade to Pro for unlimited items.`,
+    })
+    expect(vi.mocked(createItemQuery)).not.toHaveBeenCalled()
+  })
+
+  it("allows a Free user one below the item limit", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "true")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: FREE_ITEM_LIMIT - 1,
+      collectionCount: 0,
+    })
+    vi.mocked(createItemQuery).mockResolvedValue(UPDATED_DETAIL)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: true, data: UPDATED_DETAIL })
+  })
+
+  it("allows a Pro user past the item limit", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "true")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: true,
+      itemCount: FREE_ITEM_LIMIT * 10,
+      collectionCount: 0,
+    })
+    vi.mocked(createItemQuery).mockResolvedValue(UPDATED_DETAIL)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: true, data: UPDATED_DETAIL })
+  })
+
+  it("allows a Free user past the item limit when enforcement is off", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "false")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: FREE_ITEM_LIMIT * 10,
+      collectionCount: 0,
+    })
+    vi.mocked(createItemQuery).mockResolvedValue(UPDATED_DETAIL)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: true, data: UPDATED_DETAIL })
+  })
+
+  it("rejects when the account cannot be found", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue(null)
+
+    const result = await createItem(VALID_CREATE_INPUT)
+
+    expect(result).toEqual({ success: false, error: "Account not found" })
+    expect(vi.mocked(createItemQuery)).not.toHaveBeenCalled()
   })
 })
 

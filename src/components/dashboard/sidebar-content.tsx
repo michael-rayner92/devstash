@@ -144,13 +144,16 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
 
       {/* Upgrade CTA */}
       {user && !user.isPro && (
-        <div className="mx-3 mb-3 mt-3 shrink-0 rounded-lg bg-accent p-3">
+        <Link
+          href="/settings#billing"
+          className="mx-3 mb-3 mt-3 block shrink-0 rounded-lg bg-accent p-3 transition-colors hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
           <div className="mb-1 flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             <span className="text-sm font-medium">Upgrade to Pro</span>
           </div>
           <p className="text-xs text-muted-foreground">Unlock AI &amp; uploads</p>
-        </div>
+        </Link>
       )}
 
       {/* User area */}

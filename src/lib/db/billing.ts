@@ -91,6 +91,20 @@ export async function findUserByStripeCustomerId(
   })
 }
 
+/**
+ * Confirm a user id exists before the webhook writes to it.
+ *
+ * The webhook's fallback path trusts a `userId` carried in Stripe metadata,
+ * which may have been written by a different environment sharing this Stripe
+ * account. Without this check, `syncSubscription` would throw on a missing row
+ * and the route would 500 — putting Stripe into a retry loop over an event it
+ * can never deliver successfully.
+ */
+export async function userExists(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+  return user !== null
+}
+
 export interface SubscriptionSync {
   isPro: boolean
   stripeSubscriptionId: string | null

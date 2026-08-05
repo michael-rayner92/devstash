@@ -5,6 +5,7 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
 import { getPinnedItems, getRecentItems } from "@/lib/db/items"
 import { DASHBOARD_COLLECTIONS_LIMIT, DASHBOARD_RECENT_ITEMS_LIMIT } from "@/lib/pagination"
+import { getPlanLimits } from "@/lib/usage-limits"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -34,6 +35,14 @@ export default async function DashboardPage() {
 
   const firstName = dbUser?.name?.split(" ")[0] ?? "there"
 
+  // Plan-aware stats copy. A null limit means unlimited — either the user is
+  // Pro, or enforcement is still off (BILLING_ENFORCED), in which case
+  // promising a cap we don't apply would be the misleading option.
+  const isPro = dbUser?.isPro ?? false
+  const limits = getPlanLimits(isPro)
+  const planSub = (limit: number | null) =>
+    limit === null ? "unlimited" : `${limit} on free plan`
+
   return (
     <div className="p-6 space-y-8 max-w-screen-2xl">
       {/* Greeting */}
@@ -50,12 +59,12 @@ export default async function DashboardPage() {
         <StatsCard
           title="Items stashed"
           value={stats.totalItems}
-          sub="50 on free plan"
+          sub={planSub(limits.items)}
         />
         <StatsCard
           title="Collections"
           value={stats.totalCollections}
-          sub="3 on free plan"
+          sub={planSub(limits.collections)}
         />
         <StatsCard
           title="Favorites"
@@ -65,7 +74,7 @@ export default async function DashboardPage() {
         <StatsCard
           title="AI credits"
           value="—"
-          sub="upgrade to unlock"
+          sub={isPro ? "included with Pro" : "upgrade to unlock"}
         />
       </div>
 

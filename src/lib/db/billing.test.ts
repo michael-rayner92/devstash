@@ -5,6 +5,7 @@ import {
   getPlanUsage,
   setStripeCustomerId,
   syncSubscription,
+  userExists,
 } from "@/lib/db/billing"
 import { prisma } from "@/lib/prisma"
 
@@ -162,6 +163,24 @@ describe("findUserByStripeCustomerId", () => {
     mockedPrisma.user.findUnique.mockResolvedValue(null)
 
     expect(await findUserByStripeCustomerId("cus_unknown")).toBeNull()
+  })
+})
+
+describe("userExists", () => {
+  it("returns true and selects only the id", async () => {
+    mockedPrisma.user.findUnique.mockResolvedValue({ id: "user-1" })
+
+    expect(await userExists("user-1")).toBe(true)
+    expect(mockedPrisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { id: true },
+    })
+  })
+
+  it("returns false for a userId that isn't ours (stale Stripe metadata)", async () => {
+    mockedPrisma.user.findUnique.mockResolvedValue(null)
+
+    expect(await userExists("user-from-another-env")).toBe(false)
   })
 })
 
