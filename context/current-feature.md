@@ -1,14 +1,53 @@
-# Current Feature
+# Current Feature: Stripe Phase 1 — Core Infrastructure
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress — branch `feature/stripe-phase-1`
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Install `stripe` (v22.x) — no `apiVersion` passed to `new Stripe()`; the SDK pins its own
+- Add three `User` columns via a Prisma migration on the Neon **development** branch: `stripeSubscriptionStatus`, `stripePriceId`, `stripeCurrentPeriodEnd` (`isPro`, `stripeCustomerId`, `stripeSubscriptionId` already exist), then run `prisma generate` explicitly
+- Create `src/lib/usage-limits.ts` — **pure** plan/limit logic, no DB or Stripe imports: `FREE_ITEM_LIMIT = 50`, `FREE_COLLECTION_LIMIT = 3`, `billingEnforced()` (a **function**, not a const), `getPlanLimits(isPro)`, `itemLimitError()`, `collectionLimitError()`, `uploadNotAllowedError()`
+- Create `src/lib/stripe.ts` — lazy, memoized `getStripe()` that never throws on import when env is absent, plus `PRICE_IDS`, `isProStatus()`, `baseUrl()`
+- Create `src/lib/db/billing.ts` — owner-scoped queries taking `userId` first: `getBillingStatus`, `getPlanUsage`, `setStripeCustomerId`, `findUserByStripeCustomerId`, `syncSubscription`
+- Sync `isPro` from the DB into the JWT on **every** session validation (add to the *existing* `jwt` callback query — no second query) and expose it as `session.user.isPro`; extend `src/types/next-auth.d.ts` for both `Session["user"]` and `next-auth/jwt`'s `JWT`
+- Create `src/actions/billing.ts` — `createCheckoutSession(interval)` and `createBillingPortalSession()` returning `{ success, data, error }`; they **return the URL**, never call `redirect()`
+- Add `BILLING_ENFORCED=false` to `.env.example`
+- Set up the Stripe test-mode product (`DevStash Pro`), two prices ($8/mo, $72/yr — no $6 price), and the customer portal (cancel, payment method, invoices, switch plans; return URL `<domain>/settings`)
+- Unit tests for `usage-limits`, `db/billing`, and `actions/billing` (Stripe mocked at the module boundary)
+- `npm run test` and `npm run build` both pass; nothing enforced, nothing user-visible this phase
 
 ## Notes
+
+Reference plan with worked code for every file: @docs/stripe-integration-plan.md (§3.1–3.4, §4.1–4.2, §4.9–4.10, §5, §6). Spec: @context/features/stripe-phase-1-spec.md.
+
+**Naming deviation from the plan:** the plan calls the limits module `src/lib/billing.ts`. This spec splits it — pure limit logic in `src/lib/usage-limits.ts`, Stripe-specific config (`PRICE_IDS`, `isProStatus`, `baseUrl`) with the client in `src/lib/stripe.ts`. Where the plan says `@/lib/billing` for a limit helper, read `@/lib/usage-limits`.
+
+**Key gotchas:**
+
+- Verify current Stripe SDK conventions with Context7 before writing code
+- `BILLING_ENFORCED` defaults to **`false`** — the *inverse* of `EMAIL_VERIFICATION_ENABLED`. Read as `process.env.BILLING_ENFORCED === "true"`. Everything stays unlocked during development
+- `billingEnforced` is a function so `vi.stubEnv` works without `resetModules` + dynamic import in every test
+- Do **not** drop the `passwordChangedAt` check while restructuring the `jwt` callback — it powers sign-out-everywhere-on-password-change, and must stay skipped on the sign-in pass (`user` present), where there's no prior `iat`
+- The proxy will **never** see `isPro` (`src/proxy.ts` builds `NextAuth(authConfig)` from the edge-safe config, which has no callbacks). Gate in server components and actions only
+- Pass `idempotencyKey: "customer:${userId}"` when creating a Stripe customer — `stripeCustomerId` is `@unique`, so a double-click could hit a constraint violation
+- Set `client_reference_id`, `metadata.userId`, **and** `subscription_data.metadata.userId` on the checkout session — Phase 2's webhook needs redundant ways to resolve the user
+- Migration policy: `npm run db:migrate`, never `db push`; development branch `br-plain-smoke-ald1szfh` only
+
+**Testing scope** is unit-only (no browser flow exists yet). Boundary cases matter: `itemLimitError` 49 → `null`, 50 → message, 51 → message; `collectionLimitError` 2 → `null`, 3 → message. Every error message must mention both the limit and Pro, since it surfaces as a Sonner toast. Manual browser check is limited to confirming the sidebar `FREE` badge + "Upgrade to Pro" CTA still render (they now read through the modified session path) and that a password change still signs you out everywhere.
+
+**Out of scope (Phase 2):** webhook route, all feature gating, `BillingSection` UI, settings page wiring, sidebar CTA link, dashboard stats copy, Stripe CLI end-to-end testing.
+
+**Stripe account findings (verified read-only against the test-mode API, 2026-08-05):**
+
+- Product `Devstash Pro Plan` (`prod_V12tZGzbuydXaC`) exists with both prices active and correct amounts — **8.00/month** and **72.00/year** — but the currency is **AUD, not USD** as the plan assumed. Confirmed intentional; `docs/stripe-integration-plan.md` §5 corrected to AUD. A price's currency can't be changed after creation, so switching would mean new prices + new env values
+- **No customer portal configuration existed** (`billingPortal.configurations.list` → 0), which would have made `createBillingPortalSession` fail at runtime. Created via the API as `bpc_1U13f3GhY8WlH9zlrkUejph5` (default, active): cancel `at_period_end`, payment method update, invoice history, customer update (email/address/name), and switch-plans with **both** prices attached to `prod_V12tZGzbuydXaC`; `default_return_url` → `http://localhost:3000/settings`. **Gotcha:** `features.subscription_update.products` is **not returned** unless you `expand: ["features.subscription_update.products"]` — the bare read shows `subscription_update.enabled: true` with no products and looks misconfigured when it isn't
+
+**Open questions — resolved 2026-08-05 (user decision):**
+
+1. **No trial.** `createCheckoutSession` charges immediately; no `subscription_data.trial_period_days`. → **Phase 2 task:** change `PRO_PLAN.cta.label` in `src/components/home/data.ts` from "Start Pro Trial" to "Upgrade to Pro" so the copy stops promising a trial that doesn't exist
+2. **`past_due` revokes Pro immediately.** `PRO_STATUSES = { active, trialing }` — a failed payment drops Pro on the next `customer.subscription.updated` webhook in Phase 2
 
 <!-- Additional context, constraints, or details from spec -->
 
