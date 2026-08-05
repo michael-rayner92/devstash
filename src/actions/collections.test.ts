@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
 import {
   createCollection,
@@ -14,9 +14,15 @@ import {
   toggleCollectionFavorite as toggleCollectionFavoriteQuery,
 } from "@/lib/db/collections"
 import type { CollectionSummary } from "@/lib/db/collections"
+import { getPlanUsage } from "@/lib/db/billing"
+import { FREE_COLLECTION_LIMIT } from "@/lib/usage-limits"
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
+}))
+
+vi.mock("@/lib/db/billing", () => ({
+  getPlanUsage: vi.fn(),
 }))
 
 vi.mock("@/lib/db/collections", () => ({
@@ -45,6 +51,17 @@ const CREATED: CollectionSummary = {
 describe("createCollection (action)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Well under the Free limits by default, so the cases below exercise
+    // validation rather than the plan gate.
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: 0,
+      collectionCount: 0,
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it("rejects when there is no session", async () => {
@@ -93,6 +110,79 @@ describe("createCollection (action)", () => {
     const result = await createCollection(VALID_INPUT)
 
     expect(result).toEqual({ success: false, error: "Something went wrong. Please try again." })
+  })
+
+  it("blocks a Free user who is at the collection limit", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "true")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: 0,
+      collectionCount: FREE_COLLECTION_LIMIT,
+    })
+
+    const result = await createCollection(VALID_INPUT)
+
+    expect(result).toEqual({
+      success: false,
+      error: `Free plan is limited to ${FREE_COLLECTION_LIMIT} collections. Upgrade to Pro for unlimited collections.`,
+    })
+    expect(vi.mocked(createCollectionQuery)).not.toHaveBeenCalled()
+  })
+
+  it("allows a Free user one below the collection limit", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "true")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: 0,
+      collectionCount: FREE_COLLECTION_LIMIT - 1,
+    })
+    vi.mocked(createCollectionQuery).mockResolvedValue(CREATED)
+
+    const result = await createCollection(VALID_INPUT)
+
+    expect(result).toEqual({ success: true, data: CREATED })
+  })
+
+  it("allows a Pro user past the collection limit", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "true")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: true,
+      itemCount: 0,
+      collectionCount: FREE_COLLECTION_LIMIT * 10,
+    })
+    vi.mocked(createCollectionQuery).mockResolvedValue(CREATED)
+
+    const result = await createCollection(VALID_INPUT)
+
+    expect(result).toEqual({ success: true, data: CREATED })
+  })
+
+  it("allows a Free user past the collection limit when enforcement is off", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "false")
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue({
+      isPro: false,
+      itemCount: 0,
+      collectionCount: FREE_COLLECTION_LIMIT * 10,
+    })
+    vi.mocked(createCollectionQuery).mockResolvedValue(CREATED)
+
+    const result = await createCollection(VALID_INPUT)
+
+    expect(result).toEqual({ success: true, data: CREATED })
+  })
+
+  it("rejects when the account cannot be found", async () => {
+    vi.mocked(auth).mockResolvedValue(SESSION)
+    vi.mocked(getPlanUsage).mockResolvedValue(null)
+
+    const result = await createCollection(VALID_INPUT)
+
+    expect(result).toEqual({ success: false, error: "Account not found" })
+    expect(vi.mocked(createCollectionQuery)).not.toHaveBeenCalled()
   })
 })
 

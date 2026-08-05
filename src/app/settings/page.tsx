@@ -4,20 +4,29 @@ import { ArrowLeft } from "lucide-react"
 import { auth } from "@/auth"
 import { getAccountSettings } from "@/lib/db/profile"
 import { getEditorPreferences } from "@/lib/db/editor-preferences"
+import { getBillingStatus } from "@/lib/db/billing"
+import { BillingSection } from "@/components/settings/billing-section"
+import { CheckoutToast } from "@/components/settings/checkout-toast"
 import { ChangePasswordForm } from "@/components/settings/change-password-form"
 import { DeleteAccountDialog } from "@/components/settings/delete-account-dialog"
 import { EditorPreferencesForm } from "@/components/settings/editor-preferences-form"
 import { EditorPreferencesProvider } from "@/components/editor-preferences/editor-preferences-provider"
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>
+}) {
   const session = await auth()
   if (!session?.user?.id) redirect("/sign-in?callbackUrl=/settings")
 
-  const [account, editorPreferences] = await Promise.all([
+  const [{ checkout }, account, editorPreferences, billing] = await Promise.all([
+    searchParams,
     getAccountSettings(session.user.id),
     getEditorPreferences(session.user.id),
+    getBillingStatus(session.user.id),
   ])
-  if (!account) redirect("/sign-in")
+  if (!account || !billing) redirect("/sign-in")
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,6 +41,20 @@ export default async function SettingsPage() {
         </Link>
 
         <h1 className="text-lg font-semibold">Settings</h1>
+
+        <CheckoutToast status={checkout} />
+
+        {/* Plan & billing — scroll-mt so the sidebar's #billing anchor lands clear of the top */}
+        <section
+          id="billing"
+          className="scroll-mt-6 rounded-xl border border-border bg-card p-6"
+        >
+          <h2 className="text-base font-semibold">Plan &amp; billing</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            {billing.isPro ? "You're on DevStash Pro." : "You're on the Free plan."}
+          </p>
+          <BillingSection status={billing} />
+        </section>
 
         {/* Editor preferences — auto-saves on change */}
         <section className="rounded-xl border border-border bg-card p-6">

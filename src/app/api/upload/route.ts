@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "node:crypto"
 import { auth } from "@/auth"
 import { createFileItem } from "@/lib/db/items"
+import { getPlanUsage } from "@/lib/db/billing"
+import { itemLimitError, uploadNotAllowedError } from "@/lib/usage-limits"
 import { uploadToR2 } from "@/lib/r2"
 import {
   contentTypeForFile,
@@ -61,6 +63,32 @@ export async function POST(req: Request) {
   }
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "A file is required" }, { status: 400 })
+  }
+
+  // Plan gates. File/image items are created here via `createFileItem`, not
+  // through the `createItem` action (whose CREATABLE_TYPE_NAMES excludes
+  // them) — so this route needs its own Pro check *and* its own item-limit
+  // check. Both run before `uploadToR2` so a rejected upload never leaves an
+  // orphaned object in the bucket. They run after `req.formData()` so the
+  // request body is fully consumed before we respond.
+  const usage = await getPlanUsage(userId)
+  if (!usage) {
+    return NextResponse.json({ error: "Account not found" }, { status: 401 })
+  }
+
+  const proError = uploadNotAllowedError(usage.isPro)
+  if (proError) {
+    return NextResponse.json({ error: proError }, { status: 403 })
+  }
+
+  // Defence in depth, and currently unreachable: uploads are Pro-only, and
+  // `getPlanLimits` makes Pro unlimited, so anything that clears the check
+  // above already has `items === null`. It earns its place only if the plan
+  // ever lets Free users upload — keep it, but don't read it as live cover
+  // for the 50-item cap. The gate that actually bites is in `createItem`.
+  const limitError = itemLimitError(usage.isPro, usage.itemCount)
+  if (limitError) {
+    return NextResponse.json({ error: limitError }, { status: 403 })
   }
 
   const kind = typeName as UploadKind

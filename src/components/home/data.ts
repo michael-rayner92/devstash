@@ -153,7 +153,9 @@ export const PRO_PRICING = {
 
 export const PRO_PLAN = {
   name: "Pro",
-  cta: { label: "Start Pro Trial", href: ROUTES.register },
+  // Not "Start Pro Trial": checkout charges immediately, with no trial
+  // configured — advertising one would be a refund/chargeback risk.
+  cta: { label: "Upgrade to Pro", href: ROUTES.register },
   features: [
     { strong: "Unlimited", label: "items & collections", included: true },
     { label: "File & image uploads", included: true },

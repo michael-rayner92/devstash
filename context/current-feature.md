@@ -1,16 +1,116 @@
-# Current Feature
+# Current Feature: Stripe Phase 2 — Integration & UI
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- **Webhook receiver** at `src/app/api/stripe/webhook/route.ts` (`runtime = "nodejs"`) handling `checkout.session.completed`, `customer.subscription.{created,updated,deleted}`, with signature verification as the only auth (400 on unsigned/tampered, no DB write)
+- **Enforce Free-plan limits at all three create paths**: `createItem` (items action), `createCollection` (collections action), and `POST /api/upload` — which needs *both* the Pro-uploads gate and the item-limit gate, before `uploadToR2`
+- **`BillingSection` client component** — usage meters + monthly/yearly toggle + Upgrade for Free users; renewal date + Manage subscription for Pro users
+- **Mount it as the first card on `/settings`** with `id="billing"` + `scroll-mt`, plus `?checkout=success` / `?checkout=cancelled` toasts
+- **Sidebar "Upgrade to Pro" block becomes a real link** to `/settings#billing`
+- **Dashboard stats cards become plan-aware** — replace hard-coded `"50 on free plan"` / `"3 on free plan"` / `"upgrade to unlock"` with `getPlanLimits(dbUser.isPro)`
+- **Fix the homepage "Start Pro Trial" copy** → `"Upgrade to Pro"` (`src/components/home/data.ts:156`) — Phase 1 shipped no trial, so the button currently promises one and charges immediately
+- Extend `items.test.ts` / `collections.test.ts`: blocked at limit, allowed for Pro, allowed when unenforced
+- Full end-to-end verification with `stripe listen`, at `BILLING_ENFORCED` both off and on
+- Resurface the 5 deferred Open Questions when reporting the phase complete
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+Spec: @context/features/stripe-phase-2-spec.md · Reference plan: @docs/stripe-integration-plan.md (§3.5–3.6, §4.3–4.8, §4.11, §6, §7, §9)
+
+**Depends on Phase 1** — merged to `main` as `0230a25` / `ece0c47`. Currently on `main`, clean.
+
+### Naming note (plan's imports don't resolve)
+
+The plan's §4.3–4.5 all `import … from "@/lib/billing"`, which doesn't exist. Phase 1 split it:
+
+| Plan says | Actually import from |
+|---|---|
+| `itemLimitError`, `collectionLimitError`, `uploadNotAllowedError`, `getPlanLimits`, `billingEnforced` | `@/lib/usage-limits` |
+| `isProStatus`, `PRICE_IDS`, `baseUrl` | `@/lib/stripe` |
+
+`src/lib/db/billing.ts` is the queries — a different module. `billingEnforced` is a **function**: call it as `billingEnforced()`.
+
+### Decisions carried from Phase 1 (do not re-litigate)
+
+- **No trial** — checkout charges immediately (hence the copy fix)
+- **`past_due` revokes Pro immediately** — `isProStatus()` grants only `active`/`trialing`, so the ordinary `updated` handler downgrades; no special case
+- **Prices are AUD**, not USD: 8.00 AUD/mo, 72.00 AUD/yr on `prod_V12tZGzbuydXaC`
+- **Portal already configured**: `bpc_1U13f3GhY8WlH9zlrkUejph5` (default, active), `default_return_url` = `http://localhost:3000/settings`
+
+### Key gotchas
+
+- **`current_period_end` is NOT on the Subscription object** — it's on the subscription *item* (`sub.items.data[0].current_period_end`) since API `2025-10-29.clover`. Reading `sub.current_period_end` silently stores `null` forever (nullable column, fails quietly)
+- **`/api/upload` is the easy-to-miss gate** — file/image items go through `createFileItem`, not the `createItem` action. Three create paths, not two
+- **Check the plan before uploading to R2**, not after — a rejected upload must not orphan an object
+- **Use `constructEventAsync`** with `await req.text()` for the raw body; don't parse first
+- **The webhook must not call `auth()`** — the `stripe-signature` header is the auth; the proxy matcher already excludes `/api`
+- **500 on handler failure** (Stripe retries), **200 for unhandled types**. All handlers write absolute state → redelivery safe
+- **Unknown customer id → 200, no write** (not an error)
+- **`isPro` written only by the webhook** — grep to confirm before finishing
+- Local `STRIPE_WEBHOOK_SECRET` comes from `stripe listen`, not the dashboard
+- If the billing section grows a `DropdownMenu` opening a `Dialog`, use `modal={false}` (known pointer-events race, see `collection-card-menu.tsx`)
+
+### Testing prerequisites
+
+```bash
+stripe login
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Put the printed `whsec_…` in `.env.local`. Test card `4242 4242 4242 4242`; failed payment `4000 0000 0000 0341`.
+
+> ⚠️ **Both existing users already have 5 collections** vs the Free limit of 3 (Neon dev branch, 2026-08-05). Flipping `BILLING_ENFORCED=true` immediately walls off collection creation for both — upgrade the test account first, or test with a fresh user.
+
+### Out of scope
+
+- Homepage pricing CTAs going straight to checkout for signed-in users (plan §4.11) — **but the "Start Pro Trial" copy fix from that same section IS in scope**
+- AI features, custom item types, data export
+- Any production-mode Stripe config; test mode only
+
+### Open questions (answer during the phase; resurface at completion)
+
+1. **Proration on plan switches** — portal was created with `create_prorations` (Stripe's default) as an implementation default, not a product decision. Confirm or change to `"none"` (one-line update to the portal config)
+2. **`STRIPE_PUBLISHABLE_KEY` is unused** — hosted Checkout/portal need no Stripe.js. Keep as a placeholder or remove?
+3. **`getPlanUsage` cost** — adds two `count` queries to every item create, collection create, and upload. Fine at current scale, deliberately uncached
+4. **Should the dashboard warn as a Free user nears a limit?** (e.g. 48/50) — out of scope as written; flag if wanted
+5. **`vi.mocked(auth)` type noise** — extending the two test files spreads the pre-existing `tsc --noEmit` errors further. Harmless (`npm run build` is the gate); a shared typed `mockAuth()` helper is the fix if it ever matters
+
+### Verification results (2026-08-05, dev branch `br-plain-smoke-ald1szfh`)
+
+Stripe CLI installed via Homebrew (v1.45.1). `stripe login` is interactive and unavailable here, so `stripe listen --api-key "$STRIPE_SECRET_KEY"` was used instead — works without pairing. Signing secret written to `.env.local`.
+
+**Happy path** — real checkout, real test card: Checkout showed **A$8.00/month**, paid, all forwarded events returned **200**, DB got `isPro=true`, customer + subscription ids, status `active`, and **`stripeCurrentPeriodEnd` = 2026-09-05 (not null)**. Sidebar badge flipped `FREE` → `PRO` **without re-signing in** and the upgrade CTA disappeared (Phase 1's JWT sync confirmed). `?checkout=success` / `?checkout=cancelled` both toast then strip the param.
+
+**Lifecycle** — plan switch monthly → yearly updated `stripePriceId` and moved the period end to **2027-08-05**; `cancel_at_period_end=true` kept `isPro=true` at status `active`; a signed `past_due` event flipped `isPro=false` immediately; real `customer.subscription.deleted` set `isPro=false`, cleared subscription/price/period and kept the customer id. Replaying the same event id twice produced **identical DB state**, both 200.
+
+**Security** — no `stripe-signature` → 400; garbage signature → 400; valid signature over a *different* body → 400; unknown customer id, validly signed → **200 with no DB write**; unhandled event type → 200. Grep confirms `isPro` is written only by `syncSubscription`, whose only callers are the webhook (`prisma/seed.ts` sets `isPro: false` on seed).
+
+**Gating** (`BILLING_ENFORCED=true`): at 3/3 collections and 50/50 items, both creates were rejected with the exact limit toasts and **no row written**; a Free upload returned **403** with the Pro message and **no R2 activity at all** in the server log. As Pro, all three succeeded. Back at `BILLING_ENFORCED=false`, all three succeeded for a Free user. Dashboard stats copy flips between `50 on free plan` / `3 on free plan` and `unlimited` with the flag.
+
+Homepage `/#pricing` has **zero** occurrences of "trial"; the Pro CTA reads "Upgrade to Pro".
+
+### Findings from verification
+
+1. **`current_period_end` gotcha confirmed but not as expected.** Verified against the installed types (`SubscriptionItems.d.ts:54`) that the field is item-level. Separately discovered the **Stripe account's default API version is `2020-08-27`** while stripe-node v22.4.0 pins `2026-07-29.dahlia`. That old rendering happens to carry `current_period_end` at **both** sub and item level, so the item-level read works today. **Latent hazard:** a production webhook endpoint created at the account default will deliver 2020-08-27 payloads while our TypeScript types describe dahlia — any dahlia-only field would be `undefined` at runtime despite being typed as present. Set the endpoint's API version explicitly when creating it.
+2. **Sonner toast-on-mount is dropped** (found in-browser, fixed). `<Toaster/>` sits *after* `{children}` in the root layout, so its subscribe effect runs **after** a page's mount effects — a toast raised synchronously on mount has no subscriber and vanishes silently. `CheckoutToast` now fires from a `setTimeout(…, 0)`. `/sign-in`'s toasts are unaffected because `useSearchParams` defers that component past hydration (verified working).
+3. **A `useRef` "already handled" guard actively breaks such a toast** — StrictMode's discarded first pass consumes the only call. Stripping the query param is what provides idempotence.
+4. **Proration reproduced (Open Question 1).** Monthly → yearly through the portal charges **A$136.00 today**: −A$8.00 credit, +A$72.00 proration, +A$72.00 new cycle. **User decision: log it, decide later** — `bpc_1U13f3GhY8WlH9zlrkUejph5` left on `create_prorations`.
+5. **Stripe adaptive pricing** showed EUR (€5.08) by default from the test browser's geo, with an AUD selector. Worth knowing before someone reports "the price is wrong".
+
+### Deviations from the spec worth noting
+
+- **`userExists` added** to `src/lib/db/billing.ts`. The plan's `resolveUserId` prefers Stripe metadata over the customer lookup, so a `userId` written by another environment would reach `prisma.user.update` and throw → 500 → Stripe retry loop, defeating the spec's own "unknown customer → no-op" rule. Now: customer id first (our DB is the source of truth), metadata only as a verified fallback.
+- **Upload gate placed after `req.formData()`**, not immediately after the auth guard as §4.5 shows. Still before `uploadToR2` (no orphan), but responding before the body is consumed risks the client seeing a connection reset instead of the 403. It also sits before `validateUpload` so a Free user gets "uploads are a Pro feature" rather than an extension nitpick.
+- **Billing amounts labelled `$8 AUD` / `$72 AUD`** in `BillingSection` rather than a bare `$`, since Checkout charges AUD.
+
+### Carried from Phase 1's review, not yet in the spec
+
+- A `past_due` user reads as Free, so clicking **Upgrade** would create a **second** Stripe subscription. `BillingSection` should route such users to the **portal** instead. (Unreachable in Phase 1; reachable now.)
+- Both billing actions call `getBillingStatus` and discard its two `count` queries — wasteful and misleading to read
 
 ## History
 
