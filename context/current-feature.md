@@ -2,19 +2,15 @@
 
 ## Status
 
-Complete
+<!-- Not Started | In Progress | Complete -->
 
 ## Goals
 
-- Free (non-Pro) users visiting `/items/files` or `/items/images` see an upgrade prompt instead of the file/image listing.
-- Pro users see the normal listing, unchanged.
-- Gate respects the existing `BILLING_ENFORCED` kill-switch (`src/lib/usage-limits.ts`) — during dev with enforcement off, everyone still sees the normal listing, consistent with every other Pro gate in the app (upload gate, item/collection limits).
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- Reuse `isFileType` (`src/lib/item-fields.ts`) to identify file/image types, and `getPlanLimits(isPro).uploads` (`src/lib/usage-limits.ts`) as the permission signal — same signal already used to block free-user uploads in `POST /api/upload`.
-- New small "upgrade required" panel component, styled consistent with the existing dashed-border empty state, with a CTA linking to `/settings#billing` (same destination as the sidebar's existing "Upgrade to Pro" CTA).
-- Scope: gates the `/items/[type]` listing page only. Does not touch upload API gating, drawer/download routes, or sidebar link hrefs (already correct).
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
