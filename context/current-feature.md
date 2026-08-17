@@ -2,25 +2,15 @@
 
 ## Status
 
-Complete
+<!-- Not Started | In Progress | Complete -->
 
 ## Goals
 
 <!-- Bullet points of what success looks like -->
 
-- A session whose user row no longer exists (purged account, reset database, token minted against a different DB branch) redirects to `/sign-in` instead of rendering a signed-in-looking but blank dashboard.
-- The public homepage stops offering "Go to Dashboard" for such a session.
-- A real signed-in user is never falsely redirected.
-
 ## Notes
 
 <!-- Additional context, constraints, or details from spec -->
-
-**The state.** `/` showed "Go to Dashboard", the dashboard then rendered with no user area, no items and no collections. Cause: a valid JWT whose `User` row is absent. Three layers each tolerated it — `src/proxy.ts` checks only `!!req.auth`; `src/auth.ts`'s `jwt` callback read `dbUser` as null and carried on (`dbUser?.isPro ?? false`), renewing the session forever; `AuthenticatedShell` and `dashboard/page.tsx` fall back to empty defaults when `dbUser` is null, which is what produced the blank shell.
-
-**Two changes, because the guard alone is not enough.** `if (!dbUser) return null` in the `jwt` callback fixes everything that reads the *session* — the homepage CTA, and `/settings` + `/profile`, whose existing page-level guards then fire with their `callbackUrl` intact. But it does **not** redirect `/dashboard`: `src/proxy.ts` builds its `auth` from the edge-safe `auth.config.ts`, which has no `jwt` callback and no DB access, so it can only verify that the token is signed and unexpired and lets a ghost session through to a server component that sees a null session and renders the empty shell. The redirect therefore has to live at the first point that can actually tell — `AuthenticatedShell`, right after its `findUnique`. Caught by in-browser testing, not by reasoning; the guard was initially assumed sufficient.
-
-**No new unit tests.** Nothing under `src/actions/` or `src/lib/` is touched, and there is no existing test for `src/auth.ts` — consistent with the coding-standards test scope.
 
 ## History
 
