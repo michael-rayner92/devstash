@@ -2,6 +2,7 @@ import Link from "next/link"
 import { CollectionCard } from "@/components/dashboard/collection-card"
 import { ItemRow } from "@/components/dashboard/item-row"
 import { StatsCard } from "@/components/dashboard/stats-card"
+import { ProBadge } from "@/components/billing/plan-badge"
 import { getRecentCollections, getDashboardStats } from "@/lib/db/collections"
 import { getPinnedItems, getRecentItems } from "@/lib/db/items"
 import { DASHBOARD_COLLECTIONS_LIMIT, DASHBOARD_RECENT_ITEMS_LIMIT } from "@/lib/pagination"
@@ -75,6 +76,7 @@ export default async function DashboardPage() {
           title="AI credits"
           value="—"
           sub={isPro ? "included with Pro" : "upgrade to unlock"}
+          badge={<ProBadge size="sm" />}
         />
       </div>
 

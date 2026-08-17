@@ -10,6 +10,7 @@ import { parsePageParam } from "@/lib/pagination"
 import { getPlanLimits } from "@/lib/usage-limits"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/ui/pagination"
+import { ProBadge } from "@/components/billing/plan-badge"
 import { ImageCard } from "@/components/items/image-card"
 import { ItemCard } from "@/components/items/item-card"
 import { FileListRow } from "@/components/items/file-list-row"
@@ -64,10 +65,13 @@ export default async function ItemsByTypePage({
             <Icon className="h-5 w-5" style={{ color: itemType.color }} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight capitalize">{itemType.name}s</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight capitalize">{itemType.name}s</h1>
+              {requiresUpgrade && <ProBadge size="sm" showIcon />}
+            </div>
             <p className="text-sm text-muted-foreground">
               {requiresUpgrade
-                ? "Pro feature"
+                ? "Available on DevStash Pro"
                 : `${totalCount} ${totalCount === 1 ? "item" : "items"}`}
             </p>
           </div>

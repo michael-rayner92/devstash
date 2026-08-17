@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { FolderPlus, PanelLeft, Plus, Search, Star, X } from "lucide-react"
+import { FolderPlus, PanelLeft, Plus, Search, Sparkles, Star, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -106,6 +106,24 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
           >
             <Search className="h-5 w-5" />
           </Button>
+
+          {/* Upgrade — Free users only. Deliberately the lightest control in
+              the header: ghost variant on muted text, so it sits below the
+              create actions rather than competing with them. */}
+          {sidebarProps.user && !sidebarProps.user.isPro && (
+            <Button
+              variant="ghost"
+              asChild
+              /* Icon-only below md, at the same 36px as its icon-button
+                 siblings; label appears alongside the other labelled actions. */
+              className="w-9 px-0 text-muted-foreground hover:text-foreground md:w-auto md:px-3"
+            >
+              <Link href="/upgrade" aria-label="Upgrade to Pro">
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden md:inline">Upgrade</span>
+              </Link>
+            </Button>
+          )}
 
           <Button variant="ghost" size="icon" asChild aria-label="Favorites">
             <Link href="/favorites">

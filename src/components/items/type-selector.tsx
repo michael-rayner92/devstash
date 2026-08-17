@@ -3,6 +3,7 @@ import { FormField } from "@/components/items/form-field"
 import { iconMap } from "@/lib/icon-map"
 import type { SidebarItemType } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
+import { ProBadge } from "@/components/billing/plan-badge"
 
 interface TypeSelectorProps {
   types: SidebarItemType[]
@@ -24,11 +25,18 @@ export function TypeSelector({ types, selected, onSelect }: TypeSelectorProps) {
               type="button"
               onClick={() => onSelect(type.name)}
               className={cn(
-                "flex flex-col items-center gap-1.5 rounded-md border p-2.5 text-xs capitalize transition-colors",
+                "relative flex flex-col items-center gap-1.5 rounded-md border p-2.5 text-xs capitalize transition-colors",
                 isSelected ? "bg-accent" : "border-border text-muted-foreground hover:bg-accent"
               )}
               style={isSelected ? { borderColor: type.color, color: type.color } : undefined}
             >
+              {/* Pro-only types were visually identical to free ones here. */}
+              {type.isPro && (
+                <ProBadge
+                  size="sm"
+                  className="absolute right-1 top-1 px-1 text-[9px] leading-3.5"
+                />
+              )}
               <Icon className="h-4 w-4" style={{ color: type.color }} />
               {type.name}
             </button>

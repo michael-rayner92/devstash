@@ -14,6 +14,7 @@ export type ProfileData = {
   email: string
   image: string | null
   hasPassword: boolean
+  isPro: boolean
   createdAt: Date
   totalItems: number
   totalCollections: number
@@ -51,6 +52,7 @@ export async function getProfileData(userId: string): Promise<ProfileData | null
       email: true,
       image: true,
       password: true,
+      isPro: true,
       createdAt: true,
     },
   })
@@ -95,6 +97,7 @@ export async function getProfileData(userId: string): Promise<ProfileData | null
     email: user.email,
     image: user.image,
     hasPassword: !!user.password,
+    isPro: user.isPro,
     createdAt: user.createdAt,
     totalItems,
     totalCollections,

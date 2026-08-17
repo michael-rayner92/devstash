@@ -4,22 +4,14 @@ import { useState, useTransition } from "react"
 import { AlertTriangle, Check } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { ProBadge } from "@/components/billing/plan-badge"
 import { createBillingPortalSession, createCheckoutSession } from "@/actions/billing"
 import type { BillingSessionResult } from "@/actions/billing"
 import type { BillingInterval } from "@/lib/stripe"
 import type { BillingStatus } from "@/lib/db/billing"
 import { FREE_COLLECTION_LIMIT, FREE_ITEM_LIMIT } from "@/lib/usage-limits"
+import { PLAN_PRICING } from "@/lib/plan-pricing"
 import { cn } from "@/lib/utils"
-
-/**
- * Prices are in **AUD** (the currency the Stripe prices were created in), so
- * the amount is labelled rather than left as a bare `$` — Checkout will show
- * AUD and an unlabelled dollar sign invites a surprise at the payment step.
- */
-const PRICING: Record<BillingInterval, { amount: string; per: string; note?: string }> = {
-  monthly: { amount: "$8 AUD", per: "per month" },
-  yearly: { amount: "$72 AUD", per: "per year", note: "Save 25% vs monthly" },
-}
 
 /**
  * Locale and time zone are pinned so the server-rendered string matches the
@@ -95,9 +87,11 @@ export function BillingSection({ status }: { status: BillingStatus }) {
   if (status.isPro) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm">
-          <Check className="h-4 w-4 text-primary" />
-          <span className="font-medium">DevStash Pro</span>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm dark:border-amber-400/30 dark:bg-amber-400/10">
+          <Check className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+          {/* No chip here — the section heading already carries one, and two
+              PRO badges a few pixels apart just read as noise. */}
+          <span className="font-medium text-amber-700 dark:text-amber-200">DevStash Pro</span>
           <span className="text-muted-foreground">
             &middot; unlimited items, collections, and uploads
           </span>
@@ -148,7 +142,7 @@ export function BillingSection({ status }: { status: BillingStatus }) {
     )
   }
 
-  const plan = PRICING[interval]
+  const plan = PLAN_PRICING[interval]
 
   return (
     <div className="space-y-5">
@@ -161,10 +155,13 @@ export function BillingSection({ status }: { status: BillingStatus }) {
         />
       </div>
 
-      <div className="rounded-lg border border-border p-4">
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/6 p-4 dark:border-amber-400/30 dark:bg-amber-400/6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">Upgrade to Pro</p>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Upgrade to
+              <ProBadge size="sm" showIcon />
+            </p>
             <p className="text-xs text-muted-foreground">
               Unlimited items and collections, file &amp; image uploads, AI features.
             </p>

@@ -2,13 +2,109 @@
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+Make the plan-tier / Pro-gating indicators visually distinct instead of the
+current muted grey chips, and apply the same treatment everywhere tier is
+surfaced (including places not yet showing it).
+
+- One shared source of truth: `src/components/billing/plan-badge.tsx`
+  - `ProBadge` — amber/gold chip, matching the homepage's existing
+    `⚡ Pro Feature` amber accent (`--home-prompt`, `#f59e0b`)
+  - `PlanBadge` — renders `ProBadge` for Pro users, a distinct sky-toned
+    `FREE` chip otherwise
+  - Sizes `sm` / `md`; both readable in dark **and** light mode
+- Replace / add the indicator at every surface:
+  1. Sidebar user area — `PRO` / `FREE` chip (was `bg-muted` + muted text)
+  2. Sidebar item types — `PRO` marker on Files / Images (was secondary badge)
+  3. Sidebar upgrade CTA — amber tint instead of plain `bg-accent`
+  4. `/settings` "Plan & billing" heading — plan chip (new)
+  5. `BillingSection` Pro state — `PRO` chip beside "DevStash Pro"
+  6. `/profile` identity card — plan chip (new; profile showed no tier at all)
+  7. Create-dialog `TypeSelector` — `PRO` marker on the file/image tiles (new;
+     Pro-only types were indistinguishable from free ones here)
+  8. `/items/files` + `/items/images` header — `PRO` chip instead of the muted
+     "Pro feature" subtitle
+  9. `UpgradeRequired` panel — amber lock treatment instead of muted grey
+  10. Dashboard "AI credits" stat — `PRO` chip via a new optional
+      `StatsCard.badge` prop
 
 ## Notes
+
+- Presentational only. `getProfileData` gains `isPro` in its `select` (needed
+  for #6) — its colocated tests are updated accordingly.
+- Amber for Pro is not a new decision: the marketing homepage already uses
+  `#f59e0b` for "Pro Feature". Sky for Free is new, chosen to be clearly
+  non-gold without reading as a feature accent.
+- The Pro-state `BillingSection` box deliberately carries **no** chip — the
+  section heading already has one a few pixels away.
+- `UpgradeRequired`'s heading wraps each text run in its own `<span>`: bare text
+  between flex items becomes an anonymous flex item, so its literal spaces stack
+  on top of the `gap`, which showed as a double space after "Files".
+
+## Follow-up (same task): `/upgrade` page + header CTA
+
+- New `src/app/upgrade/page.tsx` — a Free-vs-Pro comparison modelled on the
+  homepage pricing area, with a monthly ($8 AUD) / yearly ($72 AUD) segmented
+  control and a checkout button. Standalone shell like `/settings` and
+  `/profile`; added to `src/proxy.ts` protected routes.
+- New `src/components/billing/upgrade-plans.tsx` (client) owns the interval
+  state and calls the existing `createCheckoutSession(interval)` action —
+  unchanged, so the Stripe redirect path is the one verified in Phase 2.
+- Header CTA in `dashboard-shell.tsx`, Free users only: `ghost` variant on
+  `text-muted-foreground`, so it's the lightest control in the header. Label at
+  `md`+, icon-only (36px, matching its icon-button siblings) below.
+- Feature lists are **reused** from `@/components/home/data` (`FREE_PLAN`,
+  `PRO_PLAN`) so the marketing page and the in-app page can't advertise
+  different things. Only the data is shared — the homepage's `.home` scoped
+  palette is not.
+- AUD price copy moved out of `billing-section.tsx` into `src/lib/plan-pricing.ts`
+  so both upgrade surfaces read one source (+4 unit tests, including a guard
+  that every amount keeps its `AUD` label — Checkout charges AUD and a bare `$`
+  misreads as USD).
+- The sidebar CTA and the `UpgradeRequired` panel button now point at `/upgrade`
+  rather than `/settings#billing`, making `/upgrade` the single upgrade funnel
+  and leaving `/settings` for billing *management*. The settings box keeps its
+  own direct checkout (no regression); it could later be reduced to a link.
+- `/upgrade` redirects to `/settings#billing` for a Pro user **and** for a
+  lapsed subscription (`stripeSubscriptionId` present but not Pro) — sending the
+  latter to Checkout would create a *second* subscription, which is the
+  Phase 1 finding `BillingSection` already guards.
+
+## Verification
+
+- In-browser (Playwright) against the running dev server on :3000, signed in as
+  the demo user. The dev DB has `demo@devstash.io` on `isPro: true`, so the
+  Free-plan surfaces were exercised via a **temporary local patch** (forcing
+  `isPro: false` and `requiresUpgrade: true`) rather than by mutating the user's
+  dev data or editing the shared `.env.local` — reverted afterwards, no
+  `TEMP-VERIFY` markers left.
+- Pro state: gold chips on the sidebar user row (with sparkle), Files/Images,
+  the AI-credits stat, the `/settings` heading, and `/profile`.
+- Free state: sky `FREE` chip on the sidebar user row, `/settings` and
+  `/profile`; amber upgrade CTA in the sidebar; amber upgrade box on
+  `/settings`; `/items/files` header chip + amber-locked `UpgradeRequired`
+  panel; `PRO` chips on the File/Image tiles in the create dialog.
+- Measured contrast on the tinted chip background: **10.51:1** (Pro) and
+  **10.49:1** (Free) in dark mode, **6.32:1** in light; the sidebar upgrade CTA
+  label is 13.6:1. Light-mode label went `-700` → `-800` after amber-700
+  measured 4.48:1, marginally under AA. The app is currently pinned to `dark` in
+  the root layout, so light mode was checked by removing the class at runtime.
+- `/upgrade`: Pro user (real DB state) redirected to `/settings#billing`; under
+  the Free patch the page rendered both cards, the toggle rewrote the Pro price
+  ($8 AUD per month ↔ $72 AUD per year + "Save 25% vs monthly" + "Works out to
+  $6 AUD per month"), and cards stacked cleanly at 375px with no overflow.
+- The checkout button is wired end-to-end: clicking it called the action, which
+  returned **"You're already on Pro."** — the demo user really is Pro in the DB,
+  so this also shows the server guard holds independently of the UI. The Stripe
+  redirect itself was **not** re-exercised: all three dev users are `isPro`, and
+  a genuine test-mode checkout would mean flipping a user's flag in the DB.
+- Header CTA: ghost/muted at 1440px (visibly lighter than the outline and solid
+  create buttons), icon-only 36×36 at 375px with `aria-label="Upgrade to Pro"`,
+  zero header overflow at both sizes, and clicking it navigates to `/upgrade`.
+- Zero console errors or warnings. Lint + build + 263 tests pass.
 
 <!-- Additional context, constraints, or details from spec -->
 
