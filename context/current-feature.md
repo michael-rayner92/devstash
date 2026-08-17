@@ -2,27 +2,15 @@
 
 ## Status
 
-Complete
+<!-- Not Started | In Progress | Complete -->
 
 ## Goals
 
 <!-- Bullet points of what success looks like -->
 
-- A freshly migrated database (production, preview, a new dev branch) has all 7 system `ItemType` rows without anyone running `npm run db:seed`.
-- The item create dialog's Type selector is never empty for a new user on a new environment.
-- The migration is idempotent — safe to run against the dev and production branches, which already hold the 7 rows, without creating duplicates.
-
 ## Notes
 
 <!-- Additional context, constraints, or details from spec -->
-
-**Root cause.** Item types are a fixed global list, not per-user: `getSidebarItemTypes()` (`src/lib/db/sidebar.ts`) queries `where: { isSystem: true }` with no `userId` filter, and system rows carry `userId: null`. The `20260427124747_init` migration creates the `ItemType` table but inserts nothing — the 7 system rows exist only in `prisma/seed.ts`, which also plants the demo user (password `12345678`) and demo collections, so it is not something you want to run against production. Any database that has had `migrate deploy` but never `db:seed` therefore has zero item types, and every user on it sees an empty Type selector.
-
-**Why not `ON CONFLICT`.** The unique index is `ItemType_userId_name_key` on `("userId", "name")`, and `userId` is `NULL` for system types. Postgres treats NULLs as distinct in a unique index, so that constraint does **not** prevent duplicate system rows and `ON CONFLICT (userId, name)` has no conflict to catch — it would insert a second copy on every run. The migration uses `INSERT ... SELECT ... WHERE NOT EXISTS (isSystem = true AND name = ...)` instead, which mirrors the `findFirst({ where: { isSystem: true, name } })` check `prisma/seed.ts` already uses.
-
-**Ids.** `ItemType.id` has no DB-level default (Prisma generates the cuid in the client), so the migration must supply one. It uses `gen_random_uuid()::text` — built into Postgres 13+, no extension needed — since ids are opaque throughout the app (routes key off the type *name*, and nothing validates the cuid shape).
-
-**Not in scope.** `prisma/seed.ts` is left alone: its `upsertSystemTypes()` does `findFirst` → `update`, so it finds the migration-created rows and refreshes icon/color rather than duplicating them. The second half of the earlier suggestion (splitting a `db:bootstrap` script out of the seed) is deferred — the migration alone fixes the reported bug.
 
 ## History
 
