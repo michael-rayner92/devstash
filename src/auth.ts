@@ -28,12 +28,22 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         select: { passwordChangedAt: true, isPro: true },
       })
 
+      // A token whose user row no longer exists must not stay valid: without
+      // this the session renews indefinitely, and every DB-backed read falls
+      // back to empty (`AuthenticatedShell` passes `itemTypes: []`, no user
+      // area, no items), producing a signed-in-looking but blank dashboard
+      // rather than a redirect to sign-in. Reachable via a purged account, a
+      // reset database, or a session minted against a different DB branch.
+      // A connection failure throws rather than returning null, so a transient
+      // outage doesn't sign anyone out.
+      if (!dbUser) return null
+
       // Password-change invalidation only applies to an existing token being
       // re-validated — on the sign-in pass (`user` present) there is no prior
       // `iat` to compare against.
       if (
         !user &&
-        dbUser?.passwordChangedAt &&
+        dbUser.passwordChangedAt &&
         token.iat! < dbUser.passwordChangedAt.getTime() / 1000
       ) {
         return null
@@ -48,7 +58,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       // previously skipped (it used to `return token` early), which is the
       // price of having `isPro` correct on the very first request after
       // sign-in rather than one validation later.
-      token.isPro = dbUser?.isPro ?? false
+      token.isPro = dbUser.isPro
 
       return token
     },
