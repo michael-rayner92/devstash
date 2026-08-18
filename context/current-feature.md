@@ -2,15 +2,56 @@
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+Remove the duplicate upgrade UI on `/settings`. Since `/upgrade` shipped, a Free
+user has had **two** divergent checkout surfaces — the settings billing box
+carries its own monthly/yearly toggle and its own "Upgrade to Pro" button
+straight to Stripe, while `/upgrade` shows the full plan comparison.
+
+- `/upgrade` is the single upgrade funnel; `/settings` is for billing
+  **management** (usage, renewal date, portal).
+- The Free branch of `BillingSection` keeps its usage meters and gains a link to
+  `/upgrade` in place of the toggle + direct-checkout button.
+- Price stays visible in settings as one line, read from `PLAN_PRICING`, so the
+  two surfaces still can't quote different numbers.
+- No change to the Pro branch (renewal date + Manage subscription) or the lapsed
+  branch (Update payment details → portal).
+- No change to `createCheckoutSession` — `/upgrade` remains its only caller.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- `BillingSection` loses its `interval` state, so `createCheckoutSession` and
+  `BillingInterval` are no longer imported there; `useTransition`/`go()` stay,
+  because both remaining branches still open the Stripe portal.
+- Checkout's `success_url` / `cancel_url` still point at `/settings?checkout=…`,
+  which is now *more* coherent: you leave from `/upgrade` and land on the
+  management page, where `CheckoutToast` fires and the Pro state renders. A
+  cancelled checkout therefore returns to `/settings`, not `/upgrade` —
+  deliberately left alone, since the toast handler lives on `/settings`.
+
+## Verification
+
+- Presentational refactor of one client component; no server actions, queries,
+  or schema touched, so **no new unit tests** per the coding-standards scope.
+  The existing `createCheckoutSession` tests still apply — the action is
+  unchanged and `/upgrade` is now its only caller (grep-confirmed).
+- In-browser on a throwaway dev server on **:3010** (the user's own server was
+  down, and starting one on :3000 would have collided). All three branches
+  checked, again via a temporary local patch rather than mutating the dev DB:
+  - **Free** — usage meters intact, the toggle and direct-checkout button gone,
+    one price line ("$8 AUD per month or $72 AUD per year — save 25% vs
+    monthly."), and "View plans" navigating to `/upgrade`.
+  - **Pro** — unchanged: gold status box, renewal line, Manage subscription.
+  - **Lapsed** (`past_due`) — unchanged: red warning panel and Update payment
+    details → portal.
+- Patch artifact worth noting: while faking Free/lapsed, the section heading
+  still read `PRO` / "You're on DevStash Pro." because the patch overrode only
+  `BillingSection`'s `status`, not the page's own `billing.isPro` reads. Real
+  code drives both from the same value.
+- Zero console errors. Lint + build + 263 tests pass.
 
 ## History
 

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
+import Link from "next/link"
 import { AlertTriangle, Check } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { ProBadge } from "@/components/billing/plan-badge"
-import { createBillingPortalSession, createCheckoutSession } from "@/actions/billing"
+import { createBillingPortalSession } from "@/actions/billing"
 import type { BillingSessionResult } from "@/actions/billing"
-import type { BillingInterval } from "@/lib/stripe"
 import type { BillingStatus } from "@/lib/db/billing"
 import { FREE_COLLECTION_LIMIT, FREE_ITEM_LIMIT } from "@/lib/usage-limits"
 import { PLAN_PRICING } from "@/lib/plan-pricing"
@@ -66,11 +66,10 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 }
 
 export function BillingSection({ status }: { status: BillingStatus }) {
-  const [interval, setInterval] = useState<BillingInterval>("monthly")
   const [pending, startTransition] = useTransition()
 
-  // Both actions return a Stripe-hosted URL rather than redirecting, so the
-  // navigation happens here — and it's external, so a full page load.
+  // The portal action returns a Stripe-hosted URL rather than redirecting, so
+  // the navigation happens here — and it's external, so a full page load.
   function go(run: () => Promise<BillingSessionResult>) {
     startTransition(async () => {
       const result = await run()
@@ -142,8 +141,6 @@ export function BillingSection({ status }: { status: BillingStatus }) {
     )
   }
 
-  const plan = PLAN_PRICING[interval]
-
   return (
     <div className="space-y-5">
       <div className="space-y-3">
@@ -155,6 +152,11 @@ export function BillingSection({ status }: { status: BillingStatus }) {
         />
       </div>
 
+      {/* Plan selection and checkout live on /upgrade — this box only points at
+          it. Duplicating the interval toggle and a second direct-to-Stripe
+          button here meant two upgrade UIs that could drift apart. The price
+          still reads from PLAN_PRICING so the two can't quote different
+          numbers. */}
       <div className="rounded-lg border border-amber-500/40 bg-amber-500/6 p-4 dark:border-amber-400/30 dark:bg-amber-400/6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -162,47 +164,18 @@ export function BillingSection({ status }: { status: BillingStatus }) {
               Upgrade to
               <ProBadge size="sm" showIcon />
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Unlimited items and collections, file &amp; image uploads, AI features.
+            </p>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {PLAN_PRICING.monthly.amount} {PLAN_PRICING.monthly.per} or{" "}
+              {PLAN_PRICING.yearly.amount} {PLAN_PRICING.yearly.per} &mdash;{" "}
+              {PLAN_PRICING.yearly.note?.toLowerCase()}.
             </p>
           </div>
 
-          {/* Interval toggle — a two-button segmented control. */}
-          <div
-            role="radiogroup"
-            aria-label="Billing interval"
-            className="inline-flex rounded-md border border-input p-0.5"
-          >
-            {(["monthly", "yearly"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="radio"
-                aria-checked={interval === option}
-                onClick={() => setInterval(option)}
-                className={cn(
-                  "rounded px-3 py-1 text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                  interval === option
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm">
-            <span className="text-xl font-bold">{plan.amount}</span>{" "}
-            <span className="text-muted-foreground">{plan.per}</span>
-            {plan.note && (
-              <span className="ml-2 text-xs font-medium text-primary">{plan.note}</span>
-            )}
-          </p>
-          <Button disabled={pending} onClick={() => go(() => createCheckoutSession(interval))}>
-            {pending ? "Redirecting…" : "Upgrade to Pro"}
+          <Button asChild>
+            <Link href="/upgrade">View plans</Link>
           </Button>
         </div>
       </div>
