@@ -8,7 +8,6 @@ import { signOut } from "next-auth/react"
 import {
   Home,
   Star,
-  Clock,
   Sparkles,
   File,
   LogOut,
@@ -48,7 +47,8 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
         <nav className="px-3 pt-4 pb-2 space-y-0.5">
           <NavLink href="/dashboard" icon={Home} label="Overview" active={pathname === "/dashboard"} />
           <NavLink href="/favorites" icon={Star} label="Favorites" active={pathname === "/favorites"} />
-          <NavLink href="/dashboard/recent" icon={Clock} label="Recently used" active={pathname === "/dashboard/recent"} />
+          {/* No "Recently used" link: /dashboard/recent has never existed, so it
+              404'd. Re-add it with the page, not before. */}
         </nav>
 
         {/* Item types */}
