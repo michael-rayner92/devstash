@@ -6,6 +6,7 @@ import { auth } from "@/auth"
 import { getProfileData } from "@/lib/db/profile"
 import { iconMap } from "@/lib/icon-map"
 import { getInitials } from "@/lib/string-utils"
+import { PlanBadge } from "@/components/billing/plan-badge"
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -50,9 +51,12 @@ export default async function ProfilePage() {
               </div>
             )}
             <div className="min-w-0">
-              {profile.name && (
-                <p className="truncate text-base font-medium">{profile.name}</p>
-              )}
+              <div className="flex items-center gap-2">
+                {profile.name && (
+                  <p className="truncate text-base font-medium">{profile.name}</p>
+                )}
+                <PlanBadge isPro={profile.isPro} showIcon={profile.isPro} />
+              </div>
               <p className="truncate text-sm text-muted-foreground">{profile.email}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Joined {joinDate}</p>
             </div>

@@ -5,6 +5,7 @@ import { auth } from "@/auth"
 import { getAccountSettings } from "@/lib/db/profile"
 import { getEditorPreferences } from "@/lib/db/editor-preferences"
 import { getBillingStatus } from "@/lib/db/billing"
+import { PlanBadge } from "@/components/billing/plan-badge"
 import { BillingSection } from "@/components/settings/billing-section"
 import { CheckoutToast } from "@/components/settings/checkout-toast"
 import { ChangePasswordForm } from "@/components/settings/change-password-form"
@@ -49,8 +50,11 @@ export default async function SettingsPage({
           id="billing"
           className="scroll-mt-6 rounded-xl border border-border bg-card p-6"
         >
-          <h2 className="text-base font-semibold">Plan &amp; billing</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold">Plan &amp; billing</h2>
+            <PlanBadge isPro={billing.isPro} showIcon={billing.isPro} />
+          </div>
+          <p className="mb-4 mt-1 text-sm text-muted-foreground">
             {billing.isPro ? "You're on DevStash Pro." : "You're on the Free plan."}
           </p>
           <BillingSection status={billing} />

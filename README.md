@@ -146,7 +146,9 @@ npx prisma migrate status
 
 ## 💰 Pricing Tiers
 
-| Feature | Free | Pro ($8/mo) |
+Prices are **AUD** (the currency the Stripe prices were created in): A$8/month or A$72/year.
+
+| Feature | Free | Pro (A$8/mo or A$72/yr) |
 |---|---|---|
 | Items | 50 total | Unlimited |
 | Collections | 3 | Unlimited |

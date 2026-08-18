@@ -8,7 +8,6 @@ import { signOut } from "next-auth/react"
 import {
   Home,
   Star,
-  Clock,
   Sparkles,
   File,
   LogOut,
@@ -19,7 +18,7 @@ import { iconMap } from "@/lib/icon-map"
 import { getInitials } from "@/lib/string-utils"
 import type { SidebarItemType, SidebarCollection } from "@/lib/db/sidebar"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
+import { PlanBadge, ProBadge } from "@/components/billing/plan-badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +47,8 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
         <nav className="px-3 pt-4 pb-2 space-y-0.5">
           <NavLink href="/dashboard" icon={Home} label="Overview" active={pathname === "/dashboard"} />
           <NavLink href="/favorites" icon={Star} label="Favorites" active={pathname === "/favorites"} />
-          <NavLink href="/dashboard/recent" icon={Clock} label="Recently used" active={pathname === "/dashboard/recent"} />
+          {/* No "Recently used" link: /dashboard/recent has never existed, so it
+              404'd. Re-add it with the page, not before. */}
         </nav>
 
         {/* Item types */}
@@ -74,9 +74,7 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
                 >
                   <Icon className="h-4 w-4 shrink-0" style={{ color: type.color }} />
                   <span className="flex-1 capitalize">{type.name}s</span>
-                  {type.isPro && (
-                    <Badge variant="secondary" className="px-1 py-0 text-[10px] font-semibold leading-4 text-muted-foreground">PRO</Badge>
-                  )}
+                  {type.isPro && <ProBadge size="sm" />}
                 </Link>
               )
             })}
@@ -145,12 +143,14 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
       {/* Upgrade CTA */}
       {user && !user.isPro && (
         <Link
-          href="/settings#billing"
-          className="mx-3 mb-3 mt-3 block shrink-0 rounded-lg bg-accent p-3 transition-colors hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          href="/upgrade"
+          className="mx-3 mb-3 mt-3 block shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring dark:border-amber-400/30 dark:bg-amber-400/10 dark:hover:bg-amber-400/15"
         >
           <div className="mb-1 flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-sm font-medium">Upgrade to Pro</span>
+            <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-200">
+              Upgrade to Pro
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">Unlock AI &amp; uploads</p>
         </Link>
@@ -167,9 +167,7 @@ export function SidebarContent({ itemTypes, favoriteCollections, recentCollectio
                   <p className="truncate text-sm font-medium">{user.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  {user.isPro ? "PRO" : "FREE"}
-                </span>
+                <PlanBadge isPro={user.isPro} size="sm" showIcon={user.isPro} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="start" className="w-56">

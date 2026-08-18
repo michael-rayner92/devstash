@@ -150,9 +150,15 @@ model User {
   passwordChangedAt     DateTime?
 
   // Billing / tier
-  isPro                 Boolean  @default(false)
-  stripeCustomerId      String?  @unique
-  stripeSubscriptionId  String?  @unique
+  isPro                    Boolean  @default(false)
+  stripeCustomerId         String?  @unique
+  stripeSubscriptionId     String?  @unique
+  stripeSubscriptionStatus String?
+  stripePriceId            String?   // which plan — monthly or yearly
+  stripeCurrentPeriodEnd   DateTime? // renewal / expiry date for the billing UI
+
+  // Preferences
+  editorPreferences     Json?    // Monaco settings; see src/lib/editor-preferences.ts
 
   // Relations
   items                   Item[]
@@ -369,7 +375,12 @@ model EmailVerificationToken {
 
 ## 💰 Monetization — Freemium
 
-| | Free | Pro ($8/mo or $72/yr) |
+> 💱 Prices are **AUD** — the currency the live Stripe prices were created in
+> (it can't be changed on an existing price). Checkout charges AUD, so every
+> user-facing amount in the app is labelled `$8 AUD` / `$72 AUD`. Stripe
+> adaptive pricing may show a converted local amount with an AUD selector.
+
+| | Free | Pro (A$8/mo or A$72/yr) |
 |---|---|---|
 | Items | 50 total | Unlimited |
 | Collections | 3 | Unlimited |
