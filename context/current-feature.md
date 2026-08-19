@@ -1,16 +1,23 @@
 # Current Feature
 
+## Language Dropdown for Code Editor
+
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Replace the free-text "Language" `Input` with a **dropdown** (`<select>`) of common languages in both the **new item modal** and the **drawer edit form**.
+- Move the Language field **above** the Content editor in both places, so the choice reads as a setting for the editor below it.
+- Selecting a language re-highlights Monaco live, as you type (no save required).
+- Preserve any existing free-text language value on an item rather than silently resetting it.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Only snippet and command carry a language (`LANGUAGE_TYPES` / `isCodeType` in `src/lib/item-fields.ts`), so only those types show the dropdown.
+- Option values are canonical Monaco language ids so highlighting works without alias mapping; `monacoLanguage()` still normalizes legacy free-text values.
+- Live highlighting already worked (`language` state flows into `ContentField` → `CodeEditor`); this change is the dropdown + placement.
 
 ## History
 
