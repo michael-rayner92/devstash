@@ -12,6 +12,7 @@ import { FormField } from "@/components/items/form-field"
 import { ContentField } from "@/components/items/content-field"
 import { CollectionsField } from "@/components/items/collections-field"
 import { LanguageSelect } from "@/components/items/language-select"
+import { SuggestTags } from "@/components/items/suggest-tags"
 import { iconMap } from "@/lib/icon-map"
 import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
@@ -19,11 +20,13 @@ import type { ItemDetail } from "@/lib/db/items"
 
 interface ItemEditFormProps {
   detail: ItemDetail
+  /** Whether the AI tag suggestion control is offered (Pro). */
+  canUseAi: boolean
   onCancel: () => void
   onSaved: (detail: ItemDetail) => void
 }
 
-export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
+export function ItemEditForm({ detail, canUseAi, onCancel, onSaved }: ItemEditFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(detail.title)
   const [description, setDescription] = useState(detail.description ?? "")
@@ -43,6 +46,17 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
   const canSave = title.trim().length > 0 && !saving
+  const tagList = tags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+
+  function acceptSuggestedTag(tag: string) {
+    setTags((prev) => {
+      const existing = prev.replace(/[\s,]+$/, "")
+      return existing ? `${existing}, ${tag}` : tag
+    })
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -52,10 +66,7 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
       content: showContent ? content : null,
       language: showLanguage ? language : null,
       url: showUrl ? url : null,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
+      tags: tagList,
       collectionIds,
     })
     setSaving(false)
@@ -147,6 +158,14 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
             placeholder="comma, separated, tags"
           />
           <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
+          <SuggestTags
+            canUseAi={canUseAi}
+            title={title}
+            content={showContent ? content : null}
+            existingTags={tagList}
+            onAccept={acceptSuggestedTag}
+            disabled={saving}
+          />
         </FormField>
 
         <CollectionsField

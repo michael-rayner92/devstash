@@ -21,6 +21,7 @@ import { ContentField } from "@/components/items/content-field"
 import { TypeSelector } from "@/components/items/type-selector"
 import { CollectionsField } from "@/components/items/collections-field"
 import { LanguageSelect } from "@/components/items/language-select"
+import { SuggestTags } from "@/components/items/suggest-tags"
 import { CONTENT_TYPES, isCodeType, isFileType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import { uploadItemFile } from "@/lib/upload-item-file"
@@ -38,6 +39,8 @@ const EMPTY_FORM = {
 
 interface ItemCreateDialogProps {
   itemTypes: SidebarItemType[]
+  /** Whether the AI tag suggestion control is offered (Pro). */
+  canUseAi: boolean
   /** Optional trigger element. Omit when driving the dialog via `open`/`onOpenChange`. */
   trigger?: ReactNode
   /** Preselect this type when opening. Ignored if it isn't a creatable type. */
@@ -49,6 +52,7 @@ interface ItemCreateDialogProps {
 
 export function ItemCreateDialog({
   itemTypes,
+  canUseAi,
   trigger,
   initialType,
   open: controlledOpen,
@@ -103,6 +107,13 @@ export function ItemCreateDialog({
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean)
+
+  function acceptSuggestedTag(tag: string) {
+    setForm((f) => {
+      const existing = f.tags.replace(/[\s,]+$/, "")
+      return { ...f, tags: existing ? `${existing}, ${tag}` : tag }
+    })
+  }
 
   // Shared completion for both the file-upload and text/url create paths.
   function finish(ok: boolean, error?: string) {
@@ -231,6 +242,14 @@ export function ItemCreateDialog({
               placeholder="comma, separated, tags"
             />
             <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
+            <SuggestTags
+              canUseAi={canUseAi}
+              title={form.title}
+              content={showContent ? form.content : null}
+              existingTags={tagList()}
+              onAccept={acceptSuggestedTag}
+              disabled={creating}
+            />
           </FormField>
 
           <CollectionsField

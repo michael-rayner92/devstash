@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   findUserByStripeCustomerId,
   getBillingStatus,
+  getIsPro,
   getPlanUsage,
   setStripeCustomerId,
   syncSubscription,
@@ -230,5 +231,30 @@ describe("syncSubscription", () => {
         stripeCurrentPeriodEnd: null,
       },
     })
+  })
+})
+
+describe("getIsPro", () => {
+  it("scopes to the user and selects only the plan flag", async () => {
+    mockedPrisma.user.findUnique.mockResolvedValue({ isPro: true })
+
+    expect(await getIsPro("user-1")).toBe(true)
+    expect(mockedPrisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { isPro: true },
+    })
+    // No item/collection counts — that is the point of this query existing.
+    expect(mockedPrisma.item.count).not.toHaveBeenCalled()
+    expect(mockedPrisma.collection.count).not.toHaveBeenCalled()
+  })
+
+  it("returns false for a Free user", async () => {
+    mockedPrisma.user.findUnique.mockResolvedValue({ isPro: false })
+    expect(await getIsPro("user-1")).toBe(false)
+  })
+
+  it("returns null when the user row is gone, distinct from a Free user", async () => {
+    mockedPrisma.user.findUnique.mockResolvedValue(null)
+    expect(await getIsPro("ghost")).toBeNull()
   })
 })

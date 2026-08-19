@@ -4,6 +4,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { EditorPreferencesProvider } from "@/components/editor-preferences/editor-preferences-provider"
 import { getSidebarItemTypes, getSidebarCollections } from "@/lib/db/sidebar"
 import { normalizeEditorPreferences } from "@/lib/editor-preferences"
+import { getPlanLimits } from "@/lib/usage-limits"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -44,6 +45,7 @@ export async function AuthenticatedShell({ children }: { children: ReactNode }) 
     <EditorPreferencesProvider initialPreferences={editorPreferences}>
       <DashboardShell
         itemTypes={itemTypes}
+        canUseAi={getPlanLimits(dbUser.isPro).ai}
         favoriteCollections={favoriteCollections}
         recentCollections={recentCollections}
         user={user}

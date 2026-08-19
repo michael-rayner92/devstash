@@ -1,14 +1,50 @@
-# Current Feature
+# Current Feature: AI Auto-Tagging
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Establish the OpenAI foundation (first AI feature): client utility with a single `AI_MODEL` constant, using the standard `openai` SDK — kept simple
+- Add an `"ai"` rate limit bucket (20 requests / hour, per user) to `src/lib/rate-limit.ts`
+- New `generateAutoTags` server action: `auth()` guard, Pro gating, Zod validation, rate limiting, `{ success, data, error }` shape
+- "Suggest Tags" button (Sparkles icon, `ghost` variant) beside the tags input in both the create item dialog and the item drawer edit form
+- AI returns 3-5 freeform tags (not restricted to existing `Tag` rows), normalized to lowercase
+- Suggestions render as badges with per-tag accept (check) / reject (X) controls; accepted tags join the item's tag list
+- Truncate content to 2000 chars before the API call
+- Pro-only: button hidden for free users (UI gating) **and** enforced server-side
+- Errors surfaced via Sonner toast (Pro gate, rate limit, AI service failure)
+- Unit tests for the server action (mock `openai` at the module boundary)
 
 ## Notes
+
+### CRITICAL — gpt-5-nano API gotchas (from the spec)
+
+- **Use the Responses API, not Chat Completions.** `client.chat.completions.create()` returns an **empty string** for `gpt-5-nano`. Use `client.responses.create({ model, instructions, input, text: { format: { type: "json_object" } } })` and read `response.output_text`.
+- `max_tokens` is unsupported; the Responses API doesn't need it (`max_output_tokens` if capping).
+- **Do not use `zodResponseFormat` / `zodTextFormat`** — structured output burns excessive tokens on this model and hits length limits. Use `json_object` and parse manually.
+- The model may return `{"tags": [...]}` **or** a bare `[...]` — handle both.
+- Always lowercase the returned tags.
+
+### Spec vs. plan doc discrepancies to settle during implementation
+
+`docs/ai-integration-plan.md` was written before this spec and disagrees in a few places. The spec wins where they conflict:
+
+- Plan §3 chooses `zodTextFormat` structured outputs for tagging; the spec explicitly rules that out (see above).
+- Plan §4 proposes a larger module layout (`src/lib/ai/{client,prompts,schemas,parse}.ts`, `src/lib/db/ai-usage.ts`, `src/components/ai/*`). The spec asks to "keep it simple" — build only what auto-tagging needs, but keep the model id in **one** constant so a swap is a one-line change.
+- Plan adds `store: false` (Responses API retains input+output 30 days by default), reads item content **from the DB by `itemId`** rather than trusting the client, and adds a monthly usage cap. None of these are in the spec. The DB-read point does not fit the create dialog (the item doesn't exist yet), so content has to come from the client there — worth deciding deliberately rather than by accident, since an unmetered endpoint accepting client content is a free OpenAI proxy.
+- Plan §1.3: `zod` is used by every server action but is only a **transitive** dependency (via `next-auth`). Consider adding it to `dependencies` explicitly.
+
+### Existing context
+
+- `OPENAI_API_KEY` is documented in `.env.example` (uncommitted change already in the working tree) — that diff is part of this feature's footprint.
+- Rate limiting: extend `RateLimitType` + `CONFIGS` in `src/lib/rate-limit.ts`; it fails **open** when Upstash env vars are absent.
+- Pro gating primitives: `getPlanLimits` / `billingEnforced()` in `src/lib/usage-limits.ts`. Note `billingEnforced()` defaults **off** in dev, so a Pro check routed through it is a no-op locally — decide whether the AI gate should respect that kill switch or always apply.
+- `isPro` is on the session server-side but is **not** currently passed to the create dialog or edit form; UI gating needs it threaded in as a prop (`AuthenticatedShell` already fetches `dbUser`).
+- Lazy-memoized client convention to mirror: `getStripe()` in `src/lib/stripe.ts`, `src/lib/r2.ts` — import must never throw without env, so `npm run build` stays safe.
+- Attach points: `src/components/items/item-create-dialog.tsx` and `src/components/items/item-edit-form.tsx` (tags field ~line 143).
+- `openai` package is **not yet installed**.
 
 ## History
 

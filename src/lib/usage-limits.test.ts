@@ -6,6 +6,7 @@ import {
   collectionLimitError,
   getPlanLimits,
   itemLimitError,
+  aiNotAllowedError,
   uploadNotAllowedError,
 } from "@/lib/usage-limits"
 
@@ -46,6 +47,7 @@ describe("getPlanLimits", () => {
       items: null,
       collections: null,
       uploads: true,
+      ai: true,
     })
   })
 
@@ -55,6 +57,7 @@ describe("getPlanLimits", () => {
       items: FREE_ITEM_LIMIT,
       collections: FREE_COLLECTION_LIMIT,
       uploads: false,
+      ai: false,
     })
   })
 
@@ -64,6 +67,7 @@ describe("getPlanLimits", () => {
       items: null,
       collections: null,
       uploads: true,
+      ai: true,
     })
   })
 
@@ -148,5 +152,27 @@ describe("uploadNotAllowedError", () => {
   it("names Pro in the message (it renders as a toast)", () => {
     enforce(true)
     expect(uploadNotAllowedError(false)).toContain("Pro")
+  })
+})
+
+describe("aiNotAllowedError", () => {
+  it("blocks a Free user under enforcement", () => {
+    enforce(true)
+    expect(aiNotAllowedError(false)).toBeTypeOf("string")
+  })
+
+  it("allows a Pro user", () => {
+    enforce(true)
+    expect(aiNotAllowedError(true)).toBeNull()
+  })
+
+  it("allows a Free user when enforcement is off", () => {
+    enforce(false)
+    expect(aiNotAllowedError(false)).toBeNull()
+  })
+
+  it("names Pro in the message (it renders as a toast)", () => {
+    enforce(true)
+    expect(aiNotAllowedError(false)).toContain("Pro")
   })
 })
