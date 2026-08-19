@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { monacoLanguage } from "./code-language"
+import { LANGUAGE_OPTIONS, languageOptions, monacoLanguage } from "./code-language"
 
 describe("monacoLanguage", () => {
   it("returns plaintext for empty / nullish input", () => {
@@ -33,5 +33,33 @@ describe("monacoLanguage", () => {
   it("falls back to the lowercased input for unknown languages", () => {
     expect(monacoLanguage("Rust")).toBe("rust")
     expect(monacoLanguage("elixir")).toBe("elixir")
+  })
+})
+
+describe("languageOptions", () => {
+  it("returns the base list for an empty or nullish value", () => {
+    expect(languageOptions()).toBe(LANGUAGE_OPTIONS)
+    expect(languageOptions(null)).toBe(LANGUAGE_OPTIONS)
+    expect(languageOptions("")).toBe(LANGUAGE_OPTIONS)
+    expect(languageOptions("   ")).toBe(LANGUAGE_OPTIONS)
+  })
+
+  it("returns the base list for a listed language", () => {
+    expect(languageOptions("typescript")).toBe(LANGUAGE_OPTIONS)
+    expect(languageOptions("dockerfile")).toBe(LANGUAGE_OPTIONS)
+  })
+
+  it("appends an unlisted language so an existing value is preserved", () => {
+    const options = languageOptions("brainfuck")
+    expect(options).toHaveLength(LANGUAGE_OPTIONS.length + 1)
+    expect(options.at(-1)).toEqual({ value: "brainfuck", label: "brainfuck" })
+    expect(LANGUAGE_OPTIONS).toHaveLength(options.length - 1)
+  })
+
+  it("offers a none option and canonical Monaco ids that need no aliasing", () => {
+    expect(LANGUAGE_OPTIONS[0]).toEqual({ value: "", label: "None" })
+    for (const { value } of LANGUAGE_OPTIONS.slice(1)) {
+      expect(monacoLanguage(value)).toBe(value)
+    }
   })
 })

@@ -11,6 +11,7 @@ import { SheetClose } from "@/components/ui/sheet"
 import { FormField } from "@/components/items/form-field"
 import { ContentField } from "@/components/items/content-field"
 import { CollectionsField } from "@/components/items/collections-field"
+import { LanguageSelect } from "@/components/items/language-select"
 import { iconMap } from "@/lib/icon-map"
 import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
@@ -107,6 +108,15 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
           />
         </FormField>
 
+        {showLanguage && (
+          <LanguageSelect
+            id="edit-language"
+            value={language}
+            onChange={setLanguage}
+            disabled={saving}
+          />
+        )}
+
         {showContent && (
           <ContentField
             id="edit-content"
@@ -115,17 +125,6 @@ export function ItemEditForm({ detail, onCancel, onSaved }: ItemEditFormProps) {
             onChange={setContent}
             language={language}
           />
-        )}
-
-        {showLanguage && (
-          <FormField label="Language" htmlFor="edit-language">
-            <Input
-              id="edit-language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              placeholder="e.g. typescript"
-            />
-          </FormField>
         )}
 
         {showUrl && (

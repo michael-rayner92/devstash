@@ -20,6 +20,7 @@ import { FormField } from "@/components/items/form-field"
 import { ContentField } from "@/components/items/content-field"
 import { TypeSelector } from "@/components/items/type-selector"
 import { CollectionsField } from "@/components/items/collections-field"
+import { LanguageSelect } from "@/components/items/language-select"
 import { CONTENT_TYPES, isCodeType, isFileType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import { uploadItemFile } from "@/lib/upload-item-file"
@@ -190,6 +191,15 @@ export function ItemCreateDialog({
             </FormField>
           )}
 
+          {showLanguage && (
+            <LanguageSelect
+              id="create-language"
+              value={form.language}
+              onChange={(next) => setForm((f) => ({ ...f, language: next }))}
+              disabled={creating}
+            />
+          )}
+
           {showContent && (
             <ContentField
               id="create-content"
@@ -199,17 +209,6 @@ export function ItemCreateDialog({
               language={form.language}
               rows={6}
             />
-          )}
-
-          {showLanguage && (
-            <FormField label="Language" htmlFor="create-language">
-              <Input
-                id="create-language"
-                value={form.language}
-                onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-                placeholder="e.g. typescript"
-              />
-            </FormField>
           )}
 
           {showUrl && (
