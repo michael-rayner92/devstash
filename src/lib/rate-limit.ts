@@ -7,6 +7,7 @@ export type RateLimitType =
   | "forgot-password"
   | "reset-password"
   | "resend-verification"
+  | "ai"
 
 type Duration = `${number} ${"ms" | "s" | "m" | "h" | "d"}`
 
@@ -16,6 +17,10 @@ const CONFIGS: Record<RateLimitType, { requests: number; window: Duration }> = {
   "forgot-password":     { requests: 3, window: "1 h" },
   "reset-password":      { requests: 5, window: "15 m" },
   "resend-verification": { requests: 3, window: "15 m" },
+  // Per user, not per IP. AI calls cost money on every request, so this is
+  // the cap that actually bounds spend — it is never gated behind
+  // BILLING_ENFORCED the way the Pro tier check is.
+  ai:                    { requests: 20, window: "1 h" },
 }
 
 let _redis: Redis | null | undefined = undefined
@@ -67,8 +72,13 @@ export async function checkRateLimit(
   }
 }
 
-export function retryAfterMessage(reset: number): string {
+/** Whole minutes until the window resets, floored at 1. */
+export function retryAfterMinutes(reset: number): number {
   const seconds = Math.max(1, Math.ceil((reset - Date.now()) / 1000))
-  const minutes = Math.ceil(seconds / 60)
+  return Math.ceil(seconds / 60)
+}
+
+export function retryAfterMessage(reset: number): string {
+  const minutes = retryAfterMinutes(reset)
   return `Too many attempts. Please try again in ${minutes} minute${minutes !== 1 ? "s" : ""}.`
 }

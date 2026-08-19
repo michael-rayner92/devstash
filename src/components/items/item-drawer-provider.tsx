@@ -28,7 +28,17 @@ interface DrawerState {
 
 const CLOSED: DrawerState = { open: false, loading: false, detail: null, error: false }
 
-export function ItemDrawerProvider({ children }: { children: ReactNode }) {
+interface ItemDrawerProviderProps {
+  children: ReactNode
+  /**
+   * Whether AI features are available to this user, computed on the server and
+   * threaded down to the drawer's edit form. `BILLING_ENFORCED` is not exposed
+   * to the browser, so the check can't be repeated client-side.
+   */
+  canUseAi: boolean
+}
+
+export function ItemDrawerProvider({ children, canUseAi }: ItemDrawerProviderProps) {
   const [state, setState] = useState<DrawerState>(CLOSED)
   // Tracks the latest request so a slow response for a previously-clicked item
   // can't overwrite the drawer after the user has clicked a different one.
@@ -77,6 +87,7 @@ export function ItemDrawerProvider({ children }: { children: ReactNode }) {
         loading={state.loading}
         detail={state.detail}
         error={state.error}
+        canUseAi={canUseAi}
         onOpenChange={onOpenChange}
         onUpdated={onUpdated}
         onDeleted={onDeleted}

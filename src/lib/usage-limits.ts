@@ -29,9 +29,16 @@ export interface PlanLimits {
   /** null = unlimited */
   collections: number | null
   uploads: boolean
+  /** AI features (tag suggestions, and the rest as they land). */
+  ai: boolean
 }
 
-const UNLIMITED: PlanLimits = { items: null, collections: null, uploads: true }
+const UNLIMITED: PlanLimits = {
+  items: null,
+  collections: null,
+  uploads: true,
+  ai: true,
+}
 
 export function getPlanLimits(isPro: boolean): PlanLimits {
   if (isPro || !billingEnforced()) return UNLIMITED
@@ -39,6 +46,7 @@ export function getPlanLimits(isPro: boolean): PlanLimits {
     items: FREE_ITEM_LIMIT,
     collections: FREE_COLLECTION_LIMIT,
     uploads: false,
+    ai: false,
   }
 }
 
@@ -66,4 +74,9 @@ export function collectionLimitError(
 export function uploadNotAllowedError(isPro: boolean): string | null {
   if (getPlanLimits(isPro).uploads) return null
   return "File and image uploads are a Pro feature. Upgrade to Pro to enable uploads."
+}
+
+export function aiNotAllowedError(isPro: boolean): string | null {
+  if (getPlanLimits(isPro).ai) return null
+  return "AI features are a Pro feature. Upgrade to Pro to use AI tag suggestions."
 }

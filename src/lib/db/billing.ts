@@ -69,6 +69,19 @@ export async function getPlanUsage(userId: string): Promise<PlanUsage | null> {
   return { isPro: user.isPro, itemCount, collectionCount }
 }
 
+/**
+ * Just the plan flag. Purpose-built for the AI gates, which need `isPro` and
+ * nothing else — `getPlanUsage` would add two `count` queries per call for
+ * numbers no AI gate reads. Returns null when the user row is gone.
+ */
+export async function getIsPro(userId: string): Promise<boolean | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isPro: true },
+  })
+  return user ? user.isPro : null
+}
+
 /** Persist the Stripe customer id for a user. */
 export async function setStripeCustomerId(
   userId: string,

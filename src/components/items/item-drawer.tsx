@@ -37,6 +37,8 @@ interface ItemDrawerProps {
   loading: boolean
   detail: ItemDetail | null
   error: boolean
+  /** Whether the AI tag suggestion control is offered in edit mode (Pro). */
+  canUseAi: boolean
   onOpenChange: (open: boolean) => void
   onUpdated: (detail: ItemDetail) => void
   onDeleted: () => void
@@ -47,6 +49,7 @@ export function ItemDrawer({
   loading,
   detail,
   error,
+  canUseAi,
   onOpenChange,
   onUpdated,
   onDeleted,
@@ -65,7 +68,13 @@ export function ItemDrawer({
           <DrawerError />
         ) : (
           // Key by id so switching to a different item resets edit mode + form state.
-          <DrawerBody key={detail.id} detail={detail} onUpdated={onUpdated} onDeleted={onDeleted} />
+          <DrawerBody
+            key={detail.id}
+            detail={detail}
+            canUseAi={canUseAi}
+            onUpdated={onUpdated}
+            onDeleted={onDeleted}
+          />
         )}
       </SheetContent>
     </Sheet>
@@ -84,10 +93,12 @@ function CloseButton() {
 
 function DrawerBody({
   detail,
+  canUseAi,
   onUpdated,
   onDeleted,
 }: {
   detail: ItemDetail
+  canUseAi: boolean
   onUpdated: (detail: ItemDetail) => void
   onDeleted: () => void
 }) {
@@ -112,6 +123,7 @@ function DrawerBody({
     return (
       <ItemEditForm
         detail={detail}
+        canUseAi={canUseAi}
         onCancel={() => setMode("view")}
         onSaved={(updated) => {
           onUpdated(updated)

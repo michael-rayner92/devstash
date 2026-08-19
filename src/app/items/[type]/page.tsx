@@ -80,6 +80,7 @@ export default async function ItemsByTypePage({
         {isCreatable && (
           <ItemCreateDialog
             itemTypes={itemTypes}
+            canUseAi={getPlanLimits(dbUser?.isPro ?? false).ai}
             initialType={typeName}
             trigger={
               <Button

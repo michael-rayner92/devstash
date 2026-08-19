@@ -19,9 +19,13 @@ import { CommandPalette } from "@/components/search/command-palette"
 import { SidebarContent, type SidebarProps } from "./sidebar-content"
 import { cn } from "@/lib/utils"
 
-type DashboardShellProps = SidebarProps & { children: ReactNode }
+type DashboardShellProps = SidebarProps & {
+  children: ReactNode
+  /** Whether AI features are available to this user (computed server-side). */
+  canUseAi: boolean
+}
 
-export function DashboardShell({ children, ...sidebarProps }: DashboardShellProps) {
+export function DashboardShell({ children, canUseAi, ...sidebarProps }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -43,7 +47,7 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
   }, [])
 
   return (
-    <ItemDrawerProvider>
+    <ItemDrawerProvider canUseAi={canUseAi}>
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
         {/* Left: nav toggles + wordmark. flex-1 balances the right group so the
@@ -201,6 +205,7 @@ export function DashboardShell({ children, ...sidebarProps }: DashboardShellProp
       {/* Single dialog instances driven by both desktop buttons and the mobile menu. */}
       <ItemCreateDialog
         itemTypes={sidebarProps.itemTypes}
+        canUseAi={canUseAi}
         open={itemDialogOpen}
         onOpenChange={setItemDialogOpen}
       />
