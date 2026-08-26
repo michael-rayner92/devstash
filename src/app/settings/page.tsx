@@ -45,10 +45,13 @@ export default async function SettingsPage({
 
         <CheckoutToast status={checkout} />
 
-        {/* Plan & billing — scroll-mt so the sidebar's #billing anchor lands clear of the top */}
+        {/* Plan & billing. This is the first section on the page, so the #billing
+            anchor (sidebar CTA, and the /upgrade redirect for Pro users) should not
+            scroll at all — scroll-mt exceeds the section's own offset, which clamps
+            the jump to the top and keeps "Settings" and the back link in view. */}
         <section
           id="billing"
-          className="scroll-mt-6 rounded-xl border border-border bg-card p-6"
+          className="scroll-mt-48 rounded-xl border border-border bg-card p-6"
         >
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold">Plan &amp; billing</h2>

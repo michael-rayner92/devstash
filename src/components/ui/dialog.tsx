@@ -32,7 +32,12 @@ const DialogContent = forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border bg-background p-6 shadow-xl focus:outline-none",
+        // `[&>*]:min-w-0`: grid items default to `min-width: auto`, so a child that
+        // reports a wide min-content size — a mounted Monaco editor sets an explicit
+        // pixel width on itself — pins the track open and the dialog can no longer
+        // shrink with the viewport. Zeroing it lets the column follow the dialog,
+        // which in turn lets Monaco's `automaticLayout` observe the shrink.
+        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border border-border bg-background p-6 shadow-xl focus:outline-none [&>*]:min-w-0",
         className
       )}
       {...props}
