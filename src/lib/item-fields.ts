@@ -35,3 +35,15 @@ export function isMarkdownType(typeName: string): boolean {
 export function isFileType(typeName: string): boolean {
   return FILE_TYPES.has(typeName)
 }
+
+/**
+ * Prompt items — the only type the AI prompt optimizer applies to.
+ *
+ * Narrower than `isMarkdownType`, which also covers notes: both render in the
+ * markdown editor, but only a prompt is a set of instructions for an AI, which
+ * is what there is to optimize. Kept as a named helper rather than an inline
+ * `=== "prompt"` so the UI and the server action gate on the same predicate.
+ */
+export function isPromptType(typeName: string): boolean {
+  return typeName === "prompt"
+}

@@ -7,6 +7,7 @@ import {
   isCodeType,
   isFileType,
   isMarkdownType,
+  isPromptType,
 } from "./item-fields"
 
 describe("item-fields", () => {
@@ -72,6 +73,27 @@ describe("item-fields", () => {
       expect(CONTENT_TYPES.has(type)).toBe(false)
       expect(isCodeType(type)).toBe(false)
       expect(isMarkdownType(type)).toBe(false)
+    }
+  })
+
+  it("isPromptType is true only for prompt", () => {
+    expect(isPromptType("prompt")).toBe(true)
+    expect(isPromptType("snippet")).toBe(false)
+    expect(isPromptType("link")).toBe(false)
+    expect(isPromptType("unknown")).toBe(false)
+  })
+
+  /**
+   * The distinction the prompt optimizer's gate depends on: notes share the
+   * markdown editor with prompts, so `isMarkdownType` would wrongly let a note
+   * through. Guards against someone "simplifying" one into the other.
+   */
+  it("isPromptType is narrower than isMarkdownType, which also matches notes", () => {
+    expect(isMarkdownType("note")).toBe(true)
+    expect(isPromptType("note")).toBe(false)
+
+    for (const type of MARKDOWN_TYPES) {
+      if (isPromptType(type)) expect(isMarkdownType(type)).toBe(true)
     }
   })
 })

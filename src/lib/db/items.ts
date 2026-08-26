@@ -346,6 +346,44 @@ export async function getItemFileForDownload(
   return { fileUrl: item.fileUrl, fileName: item.fileName }
 }
 
+/** What the AI prompt optimizer needs from an item. */
+export interface ItemForOptimize {
+  typeName: string
+  title: string
+  content: string
+}
+
+/**
+ * Fetch just the fields the AI prompt optimizer prompts with, scoped to its
+ * owner. Returns `null` when the item isn't owned/found or has no content.
+ *
+ * Reads from the DB rather than accepting the prompt body from the client, for
+ * the same reason as `getItemForExplain`: this only ever runs against a saved
+ * item (the drawer's read view), so a client-supplied body would buy nothing and
+ * turn the action into a free OpenAI proxy. `typeName` comes back so the action
+ * can enforce the prompt-only rule server-side rather than trusting the UI.
+ */
+export async function getItemForOptimize(
+  userId: string,
+  itemId: string
+): Promise<ItemForOptimize | null> {
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: {
+      title: true,
+      content: true,
+      itemType: { select: { name: true } },
+    },
+  })
+  if (!item?.content) return null
+
+  return {
+    typeName: item.itemType.name,
+    title: item.title,
+    content: item.content,
+  }
+}
+
 /** What the AI code explainer needs from an item. */
 export interface ItemForExplain {
   typeName: string

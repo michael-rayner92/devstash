@@ -20,6 +20,7 @@ import {
   MAX_AI_URL_CHARS,
   clip,
 } from "@/lib/ai/limits"
+import { stripOuterFence, stripWrappingQuotes } from "@/lib/ai/text"
 
 /**
  * Hard cap on what reaches the description field. The model is asked for one or
@@ -108,7 +109,7 @@ export function parseDescription(raw: string): string {
   let text = (raw ?? "").trim()
   if (!text) return ""
 
-  text = stripCodeFence(text).replace(/\s+/g, " ").trim()
+  text = stripOuterFence(text).replace(/\s+/g, " ").trim()
 
   for (let pass = 0; pass < 3; pass++) {
     const before = text
@@ -119,27 +120,6 @@ export function parseDescription(raw: string): string {
 
   if (!text) return ""
   return text.length > MAX_DESCRIPTION_CHARS ? truncateToSentence(text) : text
-}
-
-/** Drop a ```-fenced wrapper, keeping the body. */
-function stripCodeFence(text: string): string {
-  const match = /^```[^\n]*\n([\s\S]*?)\n?```$/.exec(text)
-  return match ? match[1].trim() : text
-}
-
-/** Drop matching straight or curly quotes around the whole string. */
-function stripWrappingQuotes(text: string): string {
-  const pairs: [string, string][] = [
-    ['"', '"'],
-    ["'", "'"],
-    ["“", "”"],
-  ]
-  for (const [open, close] of pairs) {
-    if (text.length > 1 && text.startsWith(open) && text.endsWith(close)) {
-      return text.slice(1, -1).trim()
-    }
-  }
-  return text
 }
 
 /**

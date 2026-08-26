@@ -6,6 +6,7 @@ import {
   getItemDetail,
   getItemFileForDownload,
   getItemForExplain,
+  getItemForOptimize,
   getItemsByType,
   toggleItemFavorite,
   toggleItemPin,
@@ -447,6 +448,43 @@ describe("getItemFileForDownload", () => {
     expect(result).toEqual({
       fileUrl: "https://cdn.example.com/user-1/x.pdf",
       fileName: "x.pdf",
+    })
+  })
+})
+
+describe("getItemForOptimize", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns null when the item isn't owned/found or has no content", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue(null)
+    expect(await getItemForOptimize("user-1", "missing")).toBeNull()
+
+    mockedPrisma.item.findFirst.mockResolvedValue({
+      title: "An empty prompt",
+      content: null,
+      itemType: { name: "prompt" },
+    })
+    expect(await getItemForOptimize("user-1", "empty-item")).toBeNull()
+  })
+
+  it("scopes to the owner and returns the type so the action can gate on it", async () => {
+    mockedPrisma.item.findFirst.mockResolvedValue({
+      title: "Blog post writer",
+      content: "Write a blog post about {{topic}}.",
+      itemType: { name: "prompt" },
+    })
+
+    const result = await getItemForOptimize("user-1", "item-1")
+
+    expect(mockedPrisma.item.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "item-1", userId: "user-1" } })
+    )
+    expect(result).toEqual({
+      typeName: "prompt",
+      title: "Blog post writer",
+      content: "Write a blog post about {{topic}}.",
     })
   })
 })

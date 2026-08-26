@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Check,
   Copy,
@@ -22,15 +23,15 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { DeleteItemDialog } from "@/components/items/item-delete-dialog"
 import { ItemEditForm } from "@/components/items/item-edit-form"
 import { iconMap } from "@/lib/icon-map"
-import { isCodeType, isMarkdownType } from "@/lib/item-fields"
+import { isCodeType, isMarkdownType, isPromptType } from "@/lib/item-fields"
 import { formatSize } from "@/lib/file-constraints"
 import { relativeTime } from "@/lib/relative-time"
 import { typeTextColor } from "@/lib/type-color"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
 import { usePinToggle } from "@/lib/use-pin-toggle"
-import { explainCode } from "@/actions/ai"
-import { toggleItemFavorite, toggleItemPin } from "@/actions/items"
+import { explainCode, optimizePrompt } from "@/actions/ai"
+import { toggleItemFavorite, toggleItemPin, updateItem } from "@/actions/items"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -224,6 +225,7 @@ function DrawerBody({
             isCode={isCode}
             isMarkdown={isMarkdown}
             canUseAi={canUseAi}
+            onUpdated={onUpdated}
           />
         </section>
 
@@ -296,12 +298,43 @@ function ContentBlock({
   isCode,
   isMarkdown,
   canUseAi,
+  onUpdated,
 }: {
   detail: ItemDetail
   isCode: boolean
   isMarkdown: boolean
   canUseAi: boolean
+  onUpdated: (detail: ItemDetail) => void
 }) {
+  const router = useRouter()
+
+  /**
+   * Persist an accepted prompt rewrite through the ordinary update path rather
+   * than a bespoke write: the AI action itself saves nothing, so accepting is
+   * just an edit the user didn't have to type. Every other field is sent back
+   * unchanged, exactly as the edit form does on save.
+   */
+  async function applyOptimizedPrompt(optimized: string): Promise<boolean> {
+    const result = await updateItem(detail.id, {
+      title: detail.title,
+      description: detail.description,
+      content: optimized,
+      url: detail.url,
+      language: detail.language,
+      tags: detail.tags.map((tag) => tag.name),
+      collectionIds: detail.collections.map((collection) => collection.id),
+    })
+
+    if (!result.success) {
+      toast.error(result.error)
+      return false
+    }
+    toast.success("Prompt updated")
+    onUpdated(result.data)
+    router.refresh()
+    return true
+  }
+
   if (detail.contentType === "url" && detail.url) {
     return (
       <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -374,7 +407,31 @@ function ContentBlock({
       )
     }
     if (isMarkdown) {
-      return <MarkdownEditor readOnly value={detail.content} />
+      return (
+        <MarkdownEditor
+          readOnly
+          value={detail.content}
+          // Prompts only — notes share the markdown editor but aren't
+          // instructions for an AI, so there is nothing to optimize. Passing
+          // this only from the drawer's read view is what keeps the control out
+          // of the create dialog and the edit form. The action reads the prompt
+          // from the DB itself; it only needs the id.
+          optimize={
+            isPromptType(detail.itemType.name)
+              ? {
+                  canUseAi,
+                  onOptimize: async () => {
+                    const result = await optimizePrompt({ itemId: detail.id })
+                    if (result.success) return result.data
+                    toast.error(result.error)
+                    return null
+                  },
+                  onAccept: applyOptimizedPrompt,
+                }
+              : undefined
+          }
+        />
+      )
     }
     return (
       <pre className="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 text-sm font-mono whitespace-pre-wrap wrap-break-word text-foreground">
