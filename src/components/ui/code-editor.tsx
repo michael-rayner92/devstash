@@ -1,7 +1,8 @@
 "use client"
 
 import type { BeforeMount, OnMount } from "@monaco-editor/react"
-import { useState } from "react"
+import type { RefObject } from "react"
+import { useEffect, useRef, useState } from "react"
 import Editor from "@monaco-editor/react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -77,8 +78,17 @@ export function CodeEditor({
   const [tab, setTab] = useState<Tab>("code")
   const [explanation, setExplanation] = useState<string | null>(null)
   const [explaining, setExplaining] = useState(false)
+  const explainTabRef = useRef<HTMLButtonElement>(null)
   const { copied, copy } = useCopyToClipboard()
   const { preferences } = useEditorPreferences()
+
+  // Requesting an explanation unmounts the Explain button to make room for the
+  // tabs, which drops keyboard focus back to whatever contains the editor. Move
+  // it to the tab that just appeared, so the user keeps their place and a screen
+  // reader hears that the explanation arrived rather than nothing at all.
+  useEffect(() => {
+    if (explanation) explainTabRef.current?.focus()
+  }, [explanation])
 
   const chrome = EDITOR_CHROME[preferences.theme]
   const label = language?.trim()
@@ -135,7 +145,11 @@ export function CodeEditor({
               <TabButton active={activeTab === "code"} onClick={() => setTab("code")}>
                 Code
               </TabButton>
-              <TabButton active={activeTab === "explain"} onClick={() => setTab("explain")}>
+              <TabButton
+                active={activeTab === "explain"}
+                buttonRef={explainTabRef}
+                onClick={() => setTab("explain")}
+              >
                 Explain
               </TabButton>
             </div>
@@ -284,15 +298,19 @@ function ExplainButton({
 
 function TabButton({
   active,
+  buttonRef,
   onClick,
   children,
 }: {
   active: boolean
+  /** Set on a tab that should take focus when it appears. */
+  buttonRef?: RefObject<HTMLButtonElement | null>
   onClick: () => void
   children: string
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       role="tab"
       aria-selected={active}

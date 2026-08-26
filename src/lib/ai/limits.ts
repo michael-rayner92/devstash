@@ -31,6 +31,17 @@ export const MAX_AI_CONTENT_CHARS = 2000
  */
 export const MAX_AI_CODE_CHARS = 8000
 
+/**
+ * The item body when the body is a prompt being rewritten — the optimizer.
+ *
+ * Between the tagging and explanation caps, per docs/ai-integration-plan.md §11.
+ * Like explanation this reads the whole body rather than a sample, since the
+ * output is a rewrite of it and clipping would silently drop instructions the
+ * user wrote. Smaller than the code cap because a saved prompt is prose: 6,000
+ * characters is roughly 900 words, well past any prompt in practice.
+ */
+export const MAX_AI_PROMPT_CHARS = 6000
+
 /** Long enough for any real URL, short enough to bound a fabricated one. */
 export const MAX_AI_URL_CHARS = 500
 

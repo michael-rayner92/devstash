@@ -16,6 +16,7 @@ import {
   MAX_AI_TITLE_CHARS,
   clip,
 } from "@/lib/ai/limits"
+import { stripOuterFence } from "@/lib/ai/text"
 
 /**
  * Hard cap on the rendered explanation. The model is asked for 200-300 words
@@ -114,21 +115,6 @@ export function parseExplanation(raw: string): string {
   const text = stripOuterFence((raw ?? "").trim())
   if (!text) return ""
   return text.length > MAX_EXPLANATION_CHARS ? truncateMarkdown(text) : text
-}
-
-/**
- * Drop a ```-fenced wrapper around the entire reply, keeping the body.
- *
- * Guarded on the body containing no fence of its own: an explanation legitimately
- * *includes* fenced code, and in `` ```js\nfoo()\n```\n\nsome prose `` the regex's
- * lazy body would match only `foo()` and silently throw the prose away. If any
- * fence survives inside the body, the outer one wasn't a wrapper — leave it be.
- */
-function stripOuterFence(text: string): string {
-  const match = /^```[^\n]*\n([\s\S]*?)\n?```$/.exec(text)
-  if (!match) return text
-  const body = match[1].trim()
-  return body.includes("```") ? text : body
 }
 
 /**

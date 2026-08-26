@@ -1,16 +1,52 @@
-# Current Feature
+# Current Feature: AI Prompt Optimizer
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- An **Optimize** button sits in the `MarkdownEditor` header in the item drawer's **read view**, for `prompt` items only — mirroring how **Explain** works for snippets and commands.
+- Clicking it sends the saved prompt to `gpt-5-nano`, which refines it **only if it needs refining** and returns the rewritten prompt plus up to 4 bullets saying what changed.
+- The result appears on an **Optimized** tab (header grows `Original | Optimized` tabs, exactly like Explain's `Code | Explain`), showing the rewritten prompt, a **WHAT CHANGED** list, and two buttons: **Use this prompt** / **Keep original**.
+- **Use this prompt** persists the new content via the existing `updateItem` action, refreshes the drawer, and toasts success. **Keep original** discards and restores the plain header.
+- When the model judges the prompt already well-formed, the panel says so plainly rather than inventing changes — and the accept button is not offered.
+- Pro-gated and rate-limited through the same `aiGate` as the other three AI features; free users see the inert `Crown` + tooltip variant, as with Explain.
+- Nothing is written unless the user accepts. No Optimize control appears in the create dialog, the edit form, or on non-`prompt` types.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+### Decisions confirmed at load
+
+- **Apply flow: read view, saves on accept.** Deliberately diverges from `docs/ai-integration-plan.md` §6.4 ("Replace writes into the editor's local state, still requiring a normal Save"). The button mirrors Explain, which only exists in the read view — that view has no Save button, so accepting persists directly. One click instead of an edit-mode detour.
+- **Rationale bullets included** (`{ optimized, changes[] }`), per plan §6.4 — the bullets are what make the suggestion trustworthy enough to accept.
+
+### Implementation shape
+
+Follow the three existing AI features exactly; this is the fourth and last of the set.
+
+- `src/lib/ai/optimize.ts` — **pure** (no `openai` import), like `tags.ts` / `description.ts` / `explain.ts`: `OPTIMIZE_INSTRUCTIONS`, `buildOptimizeInput`, `hasOptimizableInput`, `parseOptimizedPrompt`. Both halves unit tested.
+- `optimizePrompt` action in `src/actions/ai.ts` — `auth()` → Zod → **load item from the DB by id** (`getItemForOptimize`, owner-scoped, mirroring `getItemForExplain`) → `aiGate(userId)` → call. Content read server-side, not accepted from the client: like Explain, this only ever runs against a saved item, so there is no reason to trust a client body.
+- Server-side type gate: reject anything that isn't a `prompt` item, independent of the UI (Explain has the equivalent `isCodeType` check). Needs a new `isPromptType` in `src/lib/item-fields.ts` — `MARKDOWN_TYPES` covers `note` **and** `prompt`, so it is not a usable gate on its own.
+- `MarkdownEditor` gains an optional `optimize` prop (`{ canUseAi, onOptimize }`), the same pattern `CodeEditor.explain` uses — passing it is what puts the button there, which structurally keeps the feature out of the create dialog and edit form. The editor owns the view state; the drawer owns the action, so `ui/` stays free of any `@/actions` import.
+- New input cap in `src/lib/ai/limits.ts`: **6,000 chars** per plan §11. Tell the model when the prompt was clipped.
+- `reasoning: { effort: "low" }` (this one benefits from deliberation, like Explain — `minimal` is the floor for `gpt-5-nano`; `none` is rejected). `store: false`. Non-streaming, per plan §7.
+
+### Gotchas carried from the earlier AI features
+
+- **`text.format: { type: "json_object" }` requires the word "json" to appear in `input`**, not just `instructions` — otherwise the API 400s with *"Response input messages must contain the word 'json' in some form"*. `buildTagInput` handles this by appending a `Reply with JSON: {...}` line; do the same here and cover it with a regression test.
+- Chat Completions returns an **empty string** from `gpt-5-nano` — the **Responses API** is mandatory, reading `response.output_text`.
+- `canUseAi` must stay a **server-computed prop** threaded down (`AuthenticatedShell` → `DashboardShell` → `ItemDrawerProvider` → `ItemDrawer`). `BILLING_ENFORCED` is not exposed to the browser, so a client-side `getPlanLimits` would show the button to every free user in production. The prop already reaches `ItemDrawer`; it just needs passing into the markdown branch of `ContentBlock`.
+- A `title` on a **disabled** button never shows — put it on a wrapper `<span>` (the `ExplainButton` Pro variant does this).
+- Model output renders through `react-markdown` without `rehype-raw`, so raw HTML can't be injected. Keep it that way.
+- The prompt body is arbitrary user content — carry the "data, not instructions" prompt-injection guard the other three instructions blocks use.
+
+### Out of scope
+
+- No persistence of the optimization itself (no new columns) — the panel is ephemeral, regenerated on the next click.
+- No caching on `(itemId, contentHash)`, no streaming.
+- No optimizer in the create dialog for an unsaved draft (plan §6.4 floats this as the one client-supplied-content exception; not taking it — content comes from the DB).
+- The `MarkdownEditor` tabs' missing `role="tabpanel"` / `aria-controls` / arrow-key nav is a known pre-existing gap shared with `CodeEditor`; worth a separate pass across both, not this branch.
 
 ## History
 

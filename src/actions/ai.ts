@@ -17,10 +17,17 @@ import {
   hasExplainableInput,
   parseExplanation,
 } from "@/lib/ai/explain"
+import {
+  OPTIMIZE_INSTRUCTIONS,
+  buildOptimizeInput,
+  hasOptimizableInput,
+  parseOptimizedPrompt,
+} from "@/lib/ai/optimize"
+import type { OptimizedPrompt } from "@/lib/ai/optimize"
 import { TAG_INSTRUCTIONS, buildTagInput, parseSuggestedTags } from "@/lib/ai/tags"
 import { getIsPro } from "@/lib/db/billing"
-import { getItemForExplain } from "@/lib/db/items"
-import { isCodeType } from "@/lib/item-fields"
+import { getItemForExplain, getItemForOptimize } from "@/lib/db/items"
+import { isCodeType, isPromptType } from "@/lib/item-fields"
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit"
 import { aiNotAllowedError } from "@/lib/usage-limits"
 
@@ -347,6 +354,115 @@ export async function explainCode(input: ExplainCodeInput): Promise<ExplainCodeR
       error: aiErrorMessage(
         err,
         "AI explanations are unavailable right now. Please try again."
+      ),
+    }
+  }
+}
+
+export interface OptimizePromptInput {
+  itemId: string
+}
+
+export type OptimizePromptResult =
+  | { success: true; data: OptimizedPrompt }
+  | { success: false; error: string }
+
+/**
+ * Covers the reasoning tokens and the rewrite, which is the longest output of
+ * the four features — it reproduces the whole prompt rather than summarising it.
+ * Set well above what a 6,000-character input needs, since running out mid-JSON
+ * fails the parse rather than truncating gracefully.
+ */
+const OPTIMIZE_MAX_OUTPUT_TOKENS = 3000
+
+const optimizePromptSchema = z.object({
+  itemId: z.string().trim().min(1, "Missing item"),
+})
+
+/**
+ * Rewrite a saved prompt so it produces better results, and report what changed.
+ *
+ * Like `explainCode`, the content is read from the DB by id rather than accepted
+ * from the client — this only runs against an item that already exists, so the
+ * request body is one id and the owner-scoped query means the action can only
+ * ever read content its caller owns. (docs/ai-integration-plan.md §6.4 floats
+ * accepting a client-supplied draft so the create dialog could optimize before
+ * saving; not taken — the button lives only in the drawer's read view.)
+ *
+ * Nothing is persisted here. The caller shows the rewrite for approval and, if
+ * accepted, saves it through the ordinary `updateItem` path.
+ */
+export async function optimizePrompt(
+  input: OptimizePromptInput
+): Promise<OptimizePromptResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" }
+  }
+  const userId = session.user.id
+
+  const parsed = optimizePromptSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+  }
+
+  // Loaded before `aiGate`, matching `explainCode`: a missing, unowned or empty
+  // item is a malformed request, and those are rejected ahead of the gate so
+  // they never consume a rate-limit token. The owner-scoped query makes an id
+  // belonging to someone else indistinguishable from one that doesn't exist,
+  // and `hasOptimizableInput` catches a whitespace-only body — truthy in the DB,
+  // but nothing to rewrite.
+  const item = await getItemForOptimize(userId, parsed.data.itemId)
+  if (!item || !hasOptimizableInput(item)) {
+    return { success: false, error: "Couldn't find this prompt's content to optimize." }
+  }
+  // Enforced server-side rather than trusting the UI, which only renders the
+  // button on prompt items. Note `isMarkdownType` would be the wrong gate here:
+  // it also matches notes, which share the markdown editor but aren't prompts.
+  if (!isPromptType(item.typeName)) {
+    return { success: false, error: "Only prompts can be optimized." }
+  }
+
+  const gate = await aiGate(userId)
+  if (gate) {
+    return { success: false, error: gate.error }
+  }
+
+  try {
+    // Responses API and `store: false` for the same reasons as the other three
+    // actions. `json_object` rather than plain text because the accept/reject UI
+    // needs the rewrite and the rationale as separate fields — and note
+    // `buildOptimizeInput` must therefore mention "json" in the input itself.
+    // Effort is `low` rather than `minimal`: judging whether a prompt is already
+    // good, and rewriting it if not, is the kind of work that benefits, and the
+    // latency lands on an explicit button press with a spinner.
+    const response = await getOpenAI().responses.create({
+      model: AI_MODEL,
+      instructions: OPTIMIZE_INSTRUCTIONS,
+      input: buildOptimizeInput(item),
+      text: { format: { type: "json_object" } },
+      reasoning: { effort: "low" },
+      max_output_tokens: OPTIMIZE_MAX_OUTPUT_TOKENS,
+      store: false,
+    })
+
+    const optimization = parseOptimizedPrompt(response.output_text, item.content)
+    if (!optimization) {
+      return {
+        success: false,
+        error: "Couldn't optimize this prompt. Please try again.",
+      }
+    }
+    return { success: true, data: optimization }
+  } catch (err) {
+    // Kept at error level with the full object: the message the user gets is
+    // deliberately vague, so the log is the only place the real cause survives.
+    console.error("AI prompt optimization failed", err)
+    return {
+      success: false,
+      error: aiErrorMessage(
+        err,
+        "AI prompt optimization is unavailable right now. Please try again."
       ),
     }
   }
