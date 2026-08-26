@@ -4,10 +4,68 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { AI_MODEL, aiConfigured, getOpenAI } from "@/lib/ai/client"
 import { aiErrorMessage } from "@/lib/ai/errors"
+import {
+  DESCRIPTION_INSTRUCTIONS,
+  buildDescriptionInput,
+  hasDescribableInput,
+  parseDescription,
+} from "@/lib/ai/description"
+import type { DescriptionSource } from "@/lib/ai/description"
 import { TAG_INSTRUCTIONS, buildTagInput, parseSuggestedTags } from "@/lib/ai/tags"
 import { getIsPro } from "@/lib/db/billing"
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit"
 import { aiNotAllowedError } from "@/lib/usage-limits"
+
+/**
+ * An optional text field arriving from a form. Blank and whitespace-only both
+ * mean "absent", so they collapse to null — which is what the `refine`s below
+ * check to decide whether there is anything to send the model at all.
+ */
+const nullableText = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+  z.string().nullable()
+)
+
+/**
+ * The gates every AI action shares, in the order they must run: configuration,
+ * then the Pro check, then the spend cap.
+ *
+ * Extracted so a new AI feature cannot ship having forgotten one — the rate
+ * limit in particular is the only thing bounding OpenAI spend. Auth and input
+ * validation stay in each action: they run *before* this, so an unauthenticated
+ * or malformed request never consumes a rate-limit token.
+ */
+async function aiGate(userId: string): Promise<{ error: string } | null> {
+  if (!aiConfigured()) {
+    return { error: "AI features are not configured." }
+  }
+
+  // Pro gate. Read from the DB rather than the session's `isPro` so a webhook
+  // that just downgraded a user takes effect without waiting for a token
+  // refresh. Routed through `getPlanLimits`, so it respects BILLING_ENFORCED
+  // like every other Pro gate in the app.
+  const isPro = await getIsPro(userId)
+  if (isPro === null) {
+    return { error: "Account not found" }
+  }
+  const gateError = aiNotAllowedError(isPro)
+  if (gateError) {
+    return { error: gateError }
+  }
+
+  // Always on, independent of BILLING_ENFORCED — this is the cap that bounds
+  // spend. Note it fails OPEN when Upstash is unset *or unreachable*, so a dead
+  // Redis silently removes the cap rather than blocking users.
+  const limit = await checkRateLimit("ai", `ai:${userId}`)
+  if (!limit.success) {
+    const minutes = retryAfterMinutes(limit.reset)
+    return {
+      error: `You've used all your AI requests for now. Try again in ${minutes} minute${minutes !== 1 ? "s" : ""}.`,
+    }
+  }
+
+  return null
+}
 
 export interface GenerateAutoTagsInput {
   title: string
@@ -22,18 +80,15 @@ export type GenerateAutoTagsResult =
  * Title and content come from the form rather than the DB on purpose: the
  * create dialog has no item row yet, and in edit mode the user expects tags for
  * what they are currently typing, not the last saved version. What keeps the
- * endpoint from being a free OpenAI proxy is therefore the layered gating
- * below — auth, the Pro check, a per-user hourly cap — plus the server-side
- * truncation in `buildTagInput`, which caps BOTH fields so the cost of a single
- * call is bounded no matter how much the client sends.
+ * endpoint from being a free OpenAI proxy is therefore the layered gating —
+ * auth here, then `aiGate` — plus the server-side truncation in `buildTagInput`,
+ * which caps BOTH fields so the cost of a single call is bounded no matter how
+ * much the client sends.
  */
 const generateAutoTagsSchema = z
   .object({
     title: z.string().trim(),
-    content: z.preprocess(
-      (v) => (typeof v === "string" && v.trim() === "" ? null : v),
-      z.string().nullable()
-    ),
+    content: nullableText,
   })
   .refine((data) => data.title.length > 0 || data.content !== null, {
     message: "Add a title or some content first",
@@ -54,33 +109,9 @@ export async function generateAutoTags(
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
   }
 
-  if (!aiConfigured()) {
-    return { success: false, error: "AI features are not configured." }
-  }
-
-  // Pro gate. Read from the DB rather than the session's `isPro` so a webhook
-  // that just downgraded a user takes effect without waiting for a token
-  // refresh. Routed through `getPlanLimits`, so it respects BILLING_ENFORCED
-  // like every other Pro gate in the app.
-  const isPro = await getIsPro(userId)
-  if (isPro === null) {
-    return { success: false, error: "Account not found" }
-  }
-  const gateError = aiNotAllowedError(isPro)
-  if (gateError) {
-    return { success: false, error: gateError }
-  }
-
-  // Always on, independent of BILLING_ENFORCED — this is the cap that bounds
-  // spend. Note it fails OPEN when Upstash is unset *or unreachable*, so a dead
-  // Redis silently removes the cap rather than blocking users.
-  const limit = await checkRateLimit("ai", `ai:${userId}`)
-  if (!limit.success) {
-    const minutes = retryAfterMinutes(limit.reset)
-    return {
-      success: false,
-      error: `You've used all your AI requests for now. Try again in ${minutes} minute${minutes !== 1 ? "s" : ""}.`,
-    }
+  const gate = await aiGate(userId)
+  if (gate) {
+    return { success: false, error: gate.error }
   }
 
   try {
@@ -119,6 +150,93 @@ export async function generateAutoTags(
       error: aiErrorMessage(
         err,
         "AI tag suggestions are unavailable right now. Please try again."
+      ),
+    }
+  }
+}
+
+export type GenerateDescriptionInput = DescriptionSource
+
+export type GenerateDescriptionResult =
+  | { success: true; data: { description: string } }
+  | { success: false; error: string }
+
+/**
+ * Every field comes from the form rather than the DB, and deliberately so: the
+ * create dialog has no item row yet, and in edit mode the user wants a
+ * description of what they are currently typing, not of the last saved version.
+ * Nothing here is persisted — the caller writes the result into the description
+ * input, and the existing Create/Save path does the writing.
+ *
+ * What keeps this from being a free OpenAI proxy is `aiGate` plus the
+ * server-side truncation in `buildDescriptionInput`, which clips every field so
+ * one call's cost is bounded no matter how much the client sends.
+ */
+const generateDescriptionSchema = z
+  .object({
+    typeName: z.string().trim(),
+    title: z.string().trim(),
+    content: nullableText,
+    language: nullableText,
+    url: nullableText,
+    fileName: nullableText,
+  })
+  // Same helper the button's disabled state uses, so the UI and the server
+  // agree on what counts as "nothing to describe".
+  .refine(hasDescribableInput, {
+    message: "Add a title or some content first",
+    path: ["title"],
+  })
+
+export async function generateDescription(
+  input: GenerateDescriptionInput
+): Promise<GenerateDescriptionResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" }
+  }
+  const userId = session.user.id
+
+  const parsed = generateDescriptionSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+  }
+
+  const gate = await aiGate(userId)
+  if (gate) {
+    return { success: false, error: gate.error }
+  }
+
+  try {
+    // Responses API and `store: false` for the same reasons as tag suggestion;
+    // plain text output rather than `json_object`, since one or two sentences
+    // need no structure. `effort: "minimal"` is the floor for gpt-5-nano
+    // (`none` is rejected) and is a large win on both latency and cost.
+    const response = await getOpenAI().responses.create({
+      model: AI_MODEL,
+      instructions: DESCRIPTION_INSTRUCTIONS,
+      input: buildDescriptionInput(parsed.data),
+      reasoning: { effort: "minimal" },
+      store: false,
+    })
+
+    const description = parseDescription(response.output_text)
+    if (!description) {
+      return {
+        success: false,
+        error: "Couldn't write a description for this. Try adding more detail.",
+      }
+    }
+    return { success: true, data: { description } }
+  } catch (err) {
+    // Kept at error level with the full object: the message the user gets is
+    // deliberately vague, so the log is the only place the real cause survives.
+    console.error("AI description generation failed", err)
+    return {
+      success: false,
+      error: aiErrorMessage(
+        err,
+        "AI descriptions are unavailable right now. Please try again."
       ),
     }
   }

@@ -6,16 +6,7 @@
  * boundary. See docs/ai-integration-plan.md §4.
  */
 
-/** Content sent to the model is truncated to this many characters. */
-export const MAX_AI_CONTENT_CHARS = 2000
-
-/**
- * Titles are truncated too. The field is a single-line `Input`, so a real title
- * never approaches this — but nothing stops a crafted request from sending one
- * megabyte (Next's server-action body limit), and capping only the content
- * would leave the per-call cost unbounded through the other field.
- */
-export const MAX_AI_TITLE_CHARS = 200
+import { MAX_AI_CONTENT_CHARS, MAX_AI_TITLE_CHARS, clip } from "@/lib/ai/limits"
 
 /** Upper bound on suggestions returned to the client. */
 export const MAX_SUGGESTED_TAGS = 5
@@ -63,8 +54,8 @@ export function buildTagInput({
   title: string
   content: string | null
 }): string {
-  const trimmedTitle = title.trim().slice(0, MAX_AI_TITLE_CHARS)
-  const body = (content ?? "").trim().slice(0, MAX_AI_CONTENT_CHARS)
+  const trimmedTitle = clip(title, MAX_AI_TITLE_CHARS)
+  const body = clip(content, MAX_AI_CONTENT_CHARS)
 
   const sections = [`Title: ${trimmedTitle || "(none)"}`]
   if (body) sections.push(`Content:\n"""\n${body}\n"""`)

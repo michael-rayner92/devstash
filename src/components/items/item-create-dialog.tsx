@@ -22,6 +22,7 @@ import { TypeSelector } from "@/components/items/type-selector"
 import { CollectionsField } from "@/components/items/collections-field"
 import { LanguageSelect } from "@/components/items/language-select"
 import { SuggestTags } from "@/components/items/suggest-tags"
+import { SuggestDescription } from "@/components/items/suggest-description"
 import { CONTENT_TYPES, isCodeType, isFileType } from "@/lib/item-fields"
 import { createItem } from "@/actions/items"
 import { uploadItemFile } from "@/lib/upload-item-file"
@@ -39,7 +40,7 @@ const EMPTY_FORM = {
 
 interface ItemCreateDialogProps {
   itemTypes: SidebarItemType[]
-  /** Whether the AI tag suggestion control is offered (Pro). */
+  /** Whether the AI controls (tag suggestions, description generation) are offered (Pro). */
   canUseAi: boolean
   /** Optional trigger element. Omit when driving the dialog via `open`/`onOpenChange`. */
   trigger?: ReactNode
@@ -180,7 +181,26 @@ export function ItemCreateDialog({
             />
           </FormField>
 
-          <FormField label="Description" htmlFor="create-description">
+          <FormField
+            label="Description"
+            htmlFor="create-description"
+            action={
+              <SuggestDescription
+                canUseAi={canUseAi}
+                source={{
+                  typeName,
+                  title: form.title,
+                  content: showContent ? form.content : null,
+                  language: showLanguage ? form.language : null,
+                  url: showUrl ? form.url : null,
+                  // Nothing is uploaded yet, so the local File is the only name available.
+                  fileName: isFile ? (file?.name ?? null) : null,
+                }}
+                onGenerated={(description) => setForm((f) => ({ ...f, description }))}
+                disabled={creating}
+              />
+            }
+          >
             <Textarea
               id="create-description"
               value={form.description}

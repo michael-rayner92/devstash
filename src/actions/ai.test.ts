@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Session } from "next-auth"
-import { generateAutoTags } from "@/actions/ai"
+import { generateAutoTags, generateDescription } from "@/actions/ai"
 import { auth } from "@/auth"
 import { AI_QUOTA_MESSAGE } from "@/lib/ai/errors"
 import { getIsPro } from "@/lib/db/billing"
@@ -197,6 +197,207 @@ describe("generateAutoTags when OpenAI is unconfigured", () => {
     vi.mocked(client.aiConfigured).mockReturnValue(false)
 
     expect(await generateAutoTags(INPUT)).toEqual({
+      success: false,
+      error: "AI features are not configured.",
+    })
+    expect(mocks.responses.create).not.toHaveBeenCalled()
+
+    vi.mocked(client.aiConfigured).mockReturnValue(true)
+  })
+})
+
+const DESCRIPTION_INPUT = {
+  typeName: "command",
+  title: "Tail pod logs",
+  content: "kubectl logs -f deploy/api",
+  language: "shell",
+  url: null,
+  fileName: null,
+}
+
+describe("generateDescription", () => {
+  beforeEach(() => {
+    respondWith("Follows the API deployment's logs in real time via kubectl.")
+  })
+
+  it("requires a session", async () => {
+    vi.mocked(auth).mockResolvedValue(null)
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
+      success: false,
+      error: "Not authenticated",
+    })
+    expect(mocks.responses.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects input with nothing to describe", async () => {
+    const result = await generateDescription({
+      typeName: "snippet",
+      title: "  ",
+      content: "  ",
+      language: "typescript",
+      url: null,
+      fileName: null,
+    })
+
+    expect(result).toEqual({ success: false, error: "Add a title or some content first" })
+    expect(mocks.responses.create).not.toHaveBeenCalled()
+  })
+
+  // Every content type must work off whatever it has: a link carries its payload
+  // in `url` and a file item in `fileName`, with no body at all.
+  it("accepts a link with only a url", async () => {
+    const result = await generateDescription({
+      typeName: "link",
+      title: "",
+      content: null,
+      language: null,
+      url: "https://nextjs.org/docs/app",
+      fileName: null,
+    })
+
+    expect(result.success).toBe(true)
+    expect(mocks.responses.create).toHaveBeenCalledWith(
+      expect.objectContaining({ input: expect.stringContaining("https://nextjs.org/docs/app") })
+    )
+  })
+
+  it("accepts a file item with only a file name", async () => {
+    const result = await generateDescription({
+      typeName: "file",
+      title: "",
+      content: null,
+      language: null,
+      url: null,
+      fileName: "architecture.md",
+    })
+
+    expect(result.success).toBe(true)
+    expect(mocks.responses.create).toHaveBeenCalledWith(
+      expect.objectContaining({ input: expect.stringContaining("architecture.md") })
+    )
+  })
+
+  it("blocks free users under enforcement before spending a call", async () => {
+    vi.mocked(getIsPro).mockResolvedValue(false)
+
+    const result = await generateDescription(DESCRIPTION_INPUT)
+
+    expect(result.success).toBe(false)
+    expect(result).toMatchObject({ error: expect.stringContaining("Pro") })
+    expect(mocks.responses.create).not.toHaveBeenCalled()
+  })
+
+  it("allows free users when billing enforcement is off", async () => {
+    vi.stubEnv("BILLING_ENFORCED", "false")
+    vi.mocked(getIsPro).mockResolvedValue(false)
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
+      success: true,
+      data: { description: "Follows the API deployment's logs in real time via kubectl." },
+    })
+  })
+
+  it("reports a missing account rather than calling OpenAI", async () => {
+    vi.mocked(getIsPro).mockResolvedValue(null)
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
+      success: false,
+      error: "Account not found",
+    })
+    expect(mocks.responses.create).not.toHaveBeenCalled()
+  })
+
+  it("shares the tag feature's per-user rate limit", async () => {
+    vi.mocked(checkRateLimit).mockResolvedValue({
+      success: false,
+      remaining: 0,
+      reset: Date.now() + 17 * 60_000,
+    })
+
+    const result = await generateDescription(DESCRIPTION_INPUT)
+
+    expect(checkRateLimit).toHaveBeenCalledWith("ai", "ai:user-1")
+    expect(result).toEqual({
+      success: false,
+      error: "You've used all your AI requests for now. Try again in 17 minutes.",
+    })
+    expect(mocks.responses.create).not.toHaveBeenCalled()
+  })
+
+  // Plain text, unlike tag suggestion — asking for `json_object` would also
+  // require the word "json" in the input, which this prompt has no use for.
+  it("calls the Responses API without a json format and opts out of retention", async () => {
+    await generateDescription(DESCRIPTION_INPUT)
+
+    const call = mocks.responses.create.mock.calls[0][0]
+    expect(call).toEqual(
+      expect.objectContaining({
+        model: "gpt-5-nano",
+        reasoning: { effort: "minimal" },
+        store: false,
+        instructions: expect.any(String),
+        input: expect.stringContaining("Tail pod logs"),
+      })
+    )
+    expect(call).not.toHaveProperty("text")
+  })
+
+  it("normalizes the model's output", async () => {
+    respondWith('  "Description: Tails the API logs."  ')
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
+      success: true,
+      data: { description: "Tails the API logs." },
+    })
+  })
+
+  it("reports unusable model output as a failure", async () => {
+    respondWith("   ")
+
+    const result = await generateDescription(DESCRIPTION_INPUT)
+
+    expect(result.success).toBe(false)
+    expect(result).toMatchObject({ error: expect.stringContaining("Couldn't write") })
+  })
+
+  it("names a quota failure instead of inviting a pointless retry", async () => {
+    mocks.responses.create.mockRejectedValue(
+      Object.assign(new Error("429 You exceeded your current quota"), {
+        status: 429,
+        code: "insufficient_quota",
+        type: "insufficient_quota",
+      })
+    )
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
+      success: false,
+      error: AI_QUOTA_MESSAGE,
+    })
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it("turns an OpenAI failure into a generic error", async () => {
+    mocks.responses.create.mockRejectedValue(new Error("503 upstream"))
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
+      success: false,
+      error: "AI descriptions are unavailable right now. Please try again.",
+    })
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+})
+
+describe("generateDescription when OpenAI is unconfigured", () => {
+  it("returns a configuration error instead of throwing", async () => {
+    const client = await import("@/lib/ai/client")
+    vi.mocked(client.aiConfigured).mockReturnValue(false)
+
+    expect(await generateDescription(DESCRIPTION_INPUT)).toEqual({
       success: false,
       error: "AI features are not configured.",
     })
