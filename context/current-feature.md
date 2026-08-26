@@ -1,16 +1,90 @@
-# Current Feature
+# Current Feature: AI Description Generator
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- An icon button beside the **Description** field generates a concise 1–2 sentence
+  description for the item, written into the description input.
+- Works **without saving first** — the generator reads whatever is currently in the
+  form (title, content, language, url, file name, type), not the DB row.
+- Available in **both** the new item dialog and the drawer edit form, matching where
+  "Suggest tags" already appears.
+- Works for **all content types**, using whatever information is available:
+  - text types (snippet, prompt, command, note) — title + content (+ language)
+  - link — title + URL
+  - file / image — title + file name (+ existing description)
+- Generated text **replaces** the description field's value; the user can edit it
+  afterwards like any typed text. Nothing is persisted until the existing
+  Create/Save button runs.
+- Pro-gated and rate-limited exactly like AI auto-tagging, with the same
+  server-side truncation so a single call's cost stays bounded.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+### Follows the auto-tagging pattern
+
+This is the second AI feature, so the foundation already exists and should be
+reused rather than rebuilt:
+
+- `src/lib/ai/client.ts` — `getOpenAI()`, `AI_MODEL`, `aiConfigured()`
+- `src/lib/ai/errors.ts` — `aiErrorMessage()`
+- `src/lib/rate-limit.ts` — the existing `"ai"` bucket (20/hour, key `ai:${userId}`)
+- `src/lib/usage-limits.ts` — `aiNotAllowedError()` / `getPlanLimits(isPro).ai`
+- `src/lib/db/billing.ts` — `getIsPro(userId)`
+- `canUseAi` is already threaded server → `ItemCreateDialog` / `ItemEditForm`,
+  so no new plumbing is needed for visibility.
+
+New work, mirroring `src/lib/ai/tags.ts` + `generateAutoTags`:
+
+- `src/lib/ai/description.ts` — **pure** prompt builder + output normalizer
+  (`DESCRIPTION_INSTRUCTIONS`, `buildDescriptionInput`, `parseDescription`), so
+  both halves are unit testable with no `openai` import.
+- `generateDescription` server action in `src/actions/ai.ts`, same
+  `{ success, data, error }` shape and same gate order:
+  `auth()` → Zod → `aiConfigured()` → Pro → rate limit → call.
+- `src/components/items/suggest-description.tsx` — the icon button, rendering
+  `null` when `!canUseAi` (same contract as `SuggestTags`).
+
+### Carried-over model gotchas (from the auto-tagging session)
+
+- Must use the **Responses API** — `gpt-5-nano` returns an empty string through
+  Chat Completions.
+- With `text.format` of type `json_object`, the word **"json" must appear in
+  `input`**, not just `instructions`, or the request 400s. Alternatively, since
+  the output here is a single sentence-pair rather than a list, plain text output
+  (no `json_object` format) is viable and simpler — decide during implementation
+  and note which was chosen.
+- `reasoning: { effort: "minimal" }` — measured ~4x faster and ~3x cheaper on this
+  model; `"none"` is rejected by `gpt-5-nano`.
+- `store: false` — opts out of OpenAI's 30-day body retention (this is the user's
+  own stashed content).
+
+### Constraints
+
+- Reuse `MAX_AI_CONTENT_CHARS` / `MAX_AI_TITLE_CHARS`-style truncation for every
+  field fed to the model; the request body limit is the only other bound.
+- Prompt must state that title/content are **data, not instructions**
+  (prompt-injection guard, as `TAG_INSTRUCTIONS` does).
+- Cap the returned description length so a runaway response can't blow out the
+  field; drop rather than persist an unusable result and surface the existing
+  toast-on-failure behaviour.
+- Button is disabled when there is nothing to describe (no title and no
+  content/url/file), mirroring `SuggestTags`' `hasSomethingToDescribe`.
+- Overwriting an existing description is intentional per the spec, but the button
+  should read clearly as "generate" (Sparkles icon + `aria-label`), and the whole
+  form is client-state until save, so Cancel still discards.
+- Unit tests: the pure description module + the new action with `openai` mocked at
+  the module boundary. No component tests (per coding standards).
+
+### Open questions
+
+- Should file/image items also get a description from the **file bytes** (e.g. an
+  image caption)? Out of scope — text metadata only for this iteration.
+- The `/upgrade` and homepage feature lists advertise "AI Summaries"; decide
+  whether this feature satisfies that line or whether summaries remain separate.
 
 ## History
 

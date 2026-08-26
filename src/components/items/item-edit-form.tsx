@@ -13,6 +13,7 @@ import { ContentField } from "@/components/items/content-field"
 import { CollectionsField } from "@/components/items/collections-field"
 import { LanguageSelect } from "@/components/items/language-select"
 import { SuggestTags } from "@/components/items/suggest-tags"
+import { SuggestDescription } from "@/components/items/suggest-description"
 import { iconMap } from "@/lib/icon-map"
 import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
 import { updateItem } from "@/actions/items"
@@ -20,7 +21,7 @@ import type { ItemDetail } from "@/lib/db/items"
 
 interface ItemEditFormProps {
   detail: ItemDetail
-  /** Whether the AI tag suggestion control is offered (Pro). */
+  /** Whether the AI controls (tag suggestions, description generation) are offered (Pro). */
   canUseAi: boolean
   onCancel: () => void
   onSaved: (detail: ItemDetail) => void
@@ -109,7 +110,27 @@ export function ItemEditForm({ detail, canUseAi, onCancel, onSaved }: ItemEditFo
           <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} />
         </FormField>
 
-        <FormField label="Description" htmlFor="edit-description">
+        <FormField
+          label="Description"
+          htmlFor="edit-description"
+          action={
+            <SuggestDescription
+              canUseAi={canUseAi}
+              source={{
+                typeName,
+                title,
+                content: showContent ? content : null,
+                language: showLanguage ? language : null,
+                url: showUrl ? url : null,
+                // File items have no editable body; the stored name is the detail
+                // the model has to work from.
+                fileName: detail.fileName,
+              }}
+              onGenerated={setDescription}
+              disabled={saving}
+            />
+          }
+        >
           <Textarea
             id="edit-description"
             value={description}

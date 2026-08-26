@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest"
-import {
-  MAX_AI_CONTENT_CHARS,
-  MAX_AI_TITLE_CHARS,
-  MAX_SUGGESTED_TAGS,
-  buildTagInput,
-  parseSuggestedTags,
-} from "@/lib/ai/tags"
+import { MAX_AI_CONTENT_CHARS, MAX_AI_TITLE_CHARS } from "@/lib/ai/limits"
+import { MAX_SUGGESTED_TAGS, buildTagInput, parseSuggestedTags } from "@/lib/ai/tags"
 
 describe("buildTagInput", () => {
   it("includes both title and content in labelled sections", () => {
