@@ -346,6 +346,50 @@ export async function getItemFileForDownload(
   return { fileUrl: item.fileUrl, fileName: item.fileName }
 }
 
+/** What the AI code explainer needs from an item. */
+export interface ItemForExplain {
+  typeName: string
+  title: string
+  language: string | null
+  content: string
+}
+
+/**
+ * Fetch just the fields the AI code explainer prompts with, scoped to its owner.
+ * Returns `null` when the item isn't owned/found or has no content.
+ *
+ * Purpose-built rather than reusing `getItemDetail`, following the same
+ * reasoning as `src/lib/db/search.ts`: that query pulls every tag and collection
+ * membership, none of which reaches the prompt.
+ *
+ * Reading the code from the DB — rather than accepting it from the client the
+ * way tag and description generation do — is what stops this action being a free
+ * OpenAI proxy. It can only ever explain content the caller already owns, and
+ * the request body is one id. See docs/ai-integration-plan.md §3 and §13.
+ */
+export async function getItemForExplain(
+  userId: string,
+  itemId: string
+): Promise<ItemForExplain | null> {
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: {
+      title: true,
+      content: true,
+      language: true,
+      itemType: { select: { name: true } },
+    },
+  })
+  if (!item?.content) return null
+
+  return {
+    typeName: item.itemType.name,
+    title: item.title,
+    language: item.language,
+    content: item.content,
+  }
+}
+
 /**
  * Delete an item, scoped to its owner. Ownership is verified first (the
  * `delete` where-clause can only target the unique `id`), so a user can never

@@ -14,6 +14,7 @@ import {
   Tag as TagIcon,
   X,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { CodeEditor } from "@/components/ui/code-editor"
@@ -28,6 +29,7 @@ import { typeTextColor } from "@/lib/type-color"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
 import { usePinToggle } from "@/lib/use-pin-toggle"
+import { explainCode } from "@/actions/ai"
 import { toggleItemFavorite, toggleItemPin } from "@/actions/items"
 import { cn } from "@/lib/utils"
 import type { ItemDetail } from "@/lib/db/items"
@@ -37,7 +39,10 @@ interface ItemDrawerProps {
   loading: boolean
   detail: ItemDetail | null
   error: boolean
-  /** Whether the AI tag suggestion control is offered in edit mode (Pro). */
+  /**
+   * Whether AI controls are offered (Pro): tag and description suggestions in
+   * edit mode, and code explanation in the read view.
+   */
   canUseAi: boolean
   onOpenChange: (open: boolean) => void
   onUpdated: (detail: ItemDetail) => void
@@ -214,7 +219,12 @@ function DrawerBody({
               </Button>
             )}
           </div>
-          <ContentBlock detail={detail} isCode={isCode} isMarkdown={isMarkdown} />
+          <ContentBlock
+            detail={detail}
+            isCode={isCode}
+            isMarkdown={isMarkdown}
+            canUseAi={canUseAi}
+          />
         </section>
 
         {/* Tags */}
@@ -285,10 +295,12 @@ function ContentBlock({
   detail,
   isCode,
   isMarkdown,
+  canUseAi,
 }: {
   detail: ItemDetail
   isCode: boolean
   isMarkdown: boolean
+  canUseAi: boolean
 }) {
   if (detail.contentType === "url" && detail.url) {
     return (
@@ -341,7 +353,25 @@ function ContentBlock({
 
   if (detail.content) {
     if (isCode) {
-      return <CodeEditor readOnly value={detail.content} language={detail.language} />
+      return (
+        <CodeEditor
+          readOnly
+          value={detail.content}
+          language={detail.language}
+          // Only the drawer's read view passes this, which is what keeps the
+          // Explain control out of the create dialog and the edit form. The
+          // action reads the code from the DB itself — it only needs the id.
+          explain={{
+            canUseAi,
+            onExplain: async () => {
+              const result = await explainCode({ itemId: detail.id })
+              if (result.success) return result.data.explanation
+              toast.error(result.error)
+              return null
+            },
+          }}
+        />
+      )
     }
     if (isMarkdown) {
       return <MarkdownEditor readOnly value={detail.content} />

@@ -18,6 +18,19 @@ export const MAX_AI_TITLE_CHARS = 200
 /** The item body — the only field where the cap is routinely hit. */
 export const MAX_AI_CONTENT_CHARS = 2000
 
+/**
+ * The item body when the body itself is the subject — code explanation.
+ *
+ * Deliberately larger than `MAX_AI_CONTENT_CHARS`. Tagging and description can
+ * work from the first part of a file: a tag drawn from the opening 2,000 chars
+ * is usually the same tag. An explanation cannot — clipping the code produces an
+ * explanation of different code, which is wrong rather than merely vaguer. The
+ * cost of the extra input is negligible on `gpt-5-nano` (~$0.0001 per call), and
+ * `buildExplainInput` tells the model when the code *was* clipped so it doesn't
+ * describe an ending it never saw.
+ */
+export const MAX_AI_CODE_CHARS = 8000
+
 /** Long enough for any real URL, short enough to bound a fabricated one. */
 export const MAX_AI_URL_CHARS = 500
 

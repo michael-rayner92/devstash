@@ -11,8 +11,16 @@ import {
   parseDescription,
 } from "@/lib/ai/description"
 import type { DescriptionSource } from "@/lib/ai/description"
+import {
+  EXPLAIN_INSTRUCTIONS,
+  buildExplainInput,
+  hasExplainableInput,
+  parseExplanation,
+} from "@/lib/ai/explain"
 import { TAG_INSTRUCTIONS, buildTagInput, parseSuggestedTags } from "@/lib/ai/tags"
 import { getIsPro } from "@/lib/db/billing"
+import { getItemForExplain } from "@/lib/db/items"
+import { isCodeType } from "@/lib/item-fields"
 import { checkRateLimit, retryAfterMinutes } from "@/lib/rate-limit"
 import { aiNotAllowedError } from "@/lib/usage-limits"
 
@@ -237,6 +245,108 @@ export async function generateDescription(
       error: aiErrorMessage(
         err,
         "AI descriptions are unavailable right now. Please try again."
+      ),
+    }
+  }
+}
+
+export interface ExplainCodeInput {
+  itemId: string
+}
+
+export type ExplainCodeResult =
+  | { success: true; data: { explanation: string } }
+  | { success: false; error: string }
+
+/**
+ * Reasoning tokens are billed and counted as output tokens, so this cap has to
+ * cover both the thinking and the ~300-word answer. Set well above what a
+ * well-behaved call needs: hitting it truncates the explanation rather than
+ * failing, but a cliff-edge cut is still worth avoiding.
+ */
+const EXPLAIN_MAX_OUTPUT_TOKENS = 2000
+
+const explainCodeSchema = z.object({
+  itemId: z.string().trim().min(1, "Missing item"),
+})
+
+/**
+ * Explain a saved snippet or command. Unlike the other two AI actions, the
+ * content is read from the DB by id rather than accepted from the client — this
+ * one only ever runs against an item that already exists (the drawer's read
+ * view), so there is no reason to trust a client-supplied body, and reading it
+ * server-side means the endpoint can only explain content its caller owns.
+ *
+ * Nothing is persisted: the explanation lives in component state for the life of
+ * the drawer and is regenerated on the next click.
+ */
+export async function explainCode(input: ExplainCodeInput): Promise<ExplainCodeResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" }
+  }
+  const userId = session.user.id
+
+  const parsed = explainCodeSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+  }
+
+  // Loaded before `aiGate` on purpose. A missing, unowned or unexplainable item
+  // is a malformed request in the same sense a blank title is, and those are
+  // rejected ahead of the gate so they never consume a rate-limit token. The
+  // owner-scoped query means an id belonging to someone else is indistinguishable
+  // from one that doesn't exist. The `hasExplainableInput` check catches a body
+  // of pure whitespace, which is truthy in the DB but nothing to explain.
+  const item = await getItemForExplain(userId, parsed.data.itemId)
+  if (!item || !hasExplainableInput(item)) {
+    return { success: false, error: "Couldn't find this item's content to explain." }
+  }
+  // Enforced server-side rather than trusting the UI, which only renders the
+  // button for code types: without this, the action would happily spend a call
+  // explaining an 8,000-character note.
+  if (!isCodeType(item.typeName)) {
+    return { success: false, error: "Only snippets and commands can be explained." }
+  }
+
+  const gate = await aiGate(userId)
+  if (gate) {
+    return { success: false, error: gate.error }
+  }
+
+  try {
+    // Responses API and `store: false` for the same reasons as the other two
+    // actions; plain text out, since the reply is markdown. Effort is `low`
+    // rather than the `minimal` the others use — this is the one feature that
+    // benefits from the model actually working through the code, and the extra
+    // latency lands on an explicit button press with a spinner rather than in
+    // the middle of typing.
+    const response = await getOpenAI().responses.create({
+      model: AI_MODEL,
+      instructions: EXPLAIN_INSTRUCTIONS,
+      input: buildExplainInput(item),
+      reasoning: { effort: "low" },
+      max_output_tokens: EXPLAIN_MAX_OUTPUT_TOKENS,
+      store: false,
+    })
+
+    const explanation = parseExplanation(response.output_text)
+    if (!explanation) {
+      return {
+        success: false,
+        error: "Couldn't explain this one. Please try again.",
+      }
+    }
+    return { success: true, data: { explanation } }
+  } catch (err) {
+    // Kept at error level with the full object: the message the user gets is
+    // deliberately vague, so the log is the only place the real cause survives.
+    console.error("AI code explanation failed", err)
+    return {
+      success: false,
+      error: aiErrorMessage(
+        err,
+        "AI explanations are unavailable right now. Please try again."
       ),
     }
   }
