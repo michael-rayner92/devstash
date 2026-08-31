@@ -2,52 +2,15 @@
 
 ## Status
 
-Complete
+<!-- Not Started | In Progress | Complete -->
 
 ## Goals
 
-Remove the duplicated boilerplate that every server action repeats, as found by
-the `refactor-scanner` agent's scan of `src/actions/`. Four extractions, all
-mechanical — no behaviour change:
-
-- `requireSession()` — the `auth()` + `session?.user?.id` guard, currently written
-  out **18 times** across all 6 action files.
-- `firstIssueMessage()` — `parsed.error.issues[0]?.message ?? "Invalid input"`,
-  written out **12 times**, including twice in `src/app/api/auth/` routes.
-- `GENERIC_ACTION_ERROR` — the literal `"Something went wrong. Please try again."`,
-  written out **12 times**.
-- `trimmedOrNull` — the same Zod preprocessor defined independently in both
-  `items.ts` and `collections.ts`.
-
-Success = every action reads identically to before at the call site, the full
-test suite still passes unchanged, and `npm run build` is clean.
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- All four land in **one** new module, `src/lib/action-helpers.ts`, rather than
-  three tiny files: they are all part of the same action-result boilerplate and
-  change for the same reasons. Colocated `action-helpers.test.ts` required (it is
-  a `src/lib/` module, which is a tested layer).
-- `requireSession()` must return the **full `Session`**, not just a `userId` —
-  `billing.ts:createCheckoutSession` reads `session.user.email` after the guard.
-- **Gate ordering is load-bearing.** The session check runs first, before Zod
-  parsing and before any Pro/rate-limit gate, so bad requests never consume a
-  rate-limit token. This is a pure lift; nothing is reordered.
-- `profile.ts`'s two actions keep their own `{ error }` return shape (they feed
-  `useActionState`) — only the check moves, not the wrapper.
-- **Deliberately not done:** no `withAction(() => ...)` try/catch wrapper. Each
-  action's try body is independent, so a wrapper would trade 12 short strings for
-  a callback indirection in every action. A constant is the minimal fix.
-- **Deliberately not merged:** `contentOrNull` (items.ts), `nullableText` (ai.ts)
-  and `trimmedOrNull` look alike but differ — `contentOrNull` preserves leading
-  whitespace so code and markdown bodies survive intact. Merging them would
-  silently start trimming snippet content.
-- `ai.ts` keeps its own `catch (err)` + `aiErrorMessage(err, ...)` — it
-  discriminates quota errors and must not fall back to the generic string.
-- Out of scope: the plan-limit gate glue shared by `createItem`,
-  `createCollection` and `POST /api/upload` — the upload route returns
-  `NextResponse.json` rather than `{ success, error }`, so a shared helper would
-  have to abstract over two response conventions. Belongs to an `api` scan.
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
