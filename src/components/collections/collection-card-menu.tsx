@@ -9,11 +9,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import type { EditableCollection } from "@/components/collections/collection-edit-dialog"
 import {
-  CollectionEditDialog,
-  type EditableCollection,
-} from "@/components/collections/collection-edit-dialog"
-import { CollectionDeleteDialog } from "@/components/collections/collection-delete-dialog"
+  CollectionDialogs,
+  useCollectionDialogs,
+} from "@/components/collections/collection-dialogs"
 
 /**
  * The 3-dots actions menu shown on a collection card. It hosts the edit + delete
@@ -31,8 +31,7 @@ export function CollectionCardMenu({
   onToggleFavorite: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const dialogs = useCollectionDialogs()
 
   // The menu and its dialogs are portalled, but React re-targets their events up
   // the *component* tree, so they surface on the card. The card now navigates via
@@ -61,7 +60,7 @@ export function CollectionCardMenu({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+          <DropdownMenuItem onSelect={dialogs.openEdit}>
             <Pencil />
             Edit
           </DropdownMenuItem>
@@ -70,7 +69,7 @@ export function CollectionCardMenu({
             {isFavorite ? "Unfavorite" : "Favorite"}
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => setDeleteOpen(true)}
+            onSelect={dialogs.openDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 />
@@ -79,12 +78,7 @@ export function CollectionCardMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CollectionEditDialog collection={collection} open={editOpen} onOpenChange={setEditOpen} />
-      <CollectionDeleteDialog
-        collection={{ id: collection.id, name: collection.name }}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-      />
+      <CollectionDialogs collection={collection} state={dialogs} />
     </div>
   )
 }

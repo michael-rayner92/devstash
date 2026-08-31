@@ -1,14 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { Check, X } from "lucide-react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { ProBadge } from "@/components/billing/plan-badge"
 import { createCheckoutSession } from "@/actions/billing"
-import type { BillingSessionResult } from "@/actions/billing"
 import type { BillingInterval } from "@/lib/stripe"
+import { useBillingRedirect } from "@/lib/use-billing-redirect"
 import { PLAN_PRICING } from "@/lib/plan-pricing"
 // Feature lists are reused from the marketing homepage's pricing data so the
 // two surfaces can't advertise different things. Only the data is shared — the
@@ -47,21 +46,12 @@ function FeatureRow({ feature }: { feature: PlanFeature }) {
 
 export function UpgradePlans() {
   const [interval, setInterval] = useState<BillingInterval>("monthly")
-  const [pending, startTransition] = useTransition()
+  const { pending, go } = useBillingRedirect()
 
   const price = PLAN_PRICING[interval]
 
-  // The action returns a Stripe-hosted URL rather than redirecting, so the
-  // navigation happens here — and it's external, so a full page load.
   function checkout() {
-    startTransition(async () => {
-      const result: BillingSessionResult = await createCheckoutSession(interval)
-      if (result.success) {
-        window.location.href = result.data.url
-      } else {
-        toast.error(result.error)
-      }
-    })
+    go(() => createCheckoutSession(interval))
   }
 
   return (
