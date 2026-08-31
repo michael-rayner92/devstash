@@ -3,7 +3,7 @@
 import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { redirect } from "next/navigation"
-import { auth } from "@/auth"
+import { firstIssueMessage, requireSession } from "@/lib/action-helpers"
 import { prisma } from "@/lib/prisma"
 
 const changePasswordSchema = z.object({
@@ -16,8 +16,8 @@ export async function changePassword(
   _prev: { error?: string; success?: boolean },
   formData: FormData
 ) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { error: "Not authenticated" }
   }
 
@@ -28,7 +28,7 @@ export async function changePassword(
   })
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { error: firstIssueMessage(parsed.error) }
   }
 
   const { currentPassword, newPassword, confirmPassword } = parsed.data
@@ -61,8 +61,8 @@ export async function changePassword(
 }
 
 export async function deleteAccount(): Promise<{ error: string } | void> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { error: "Not authenticated" }
   }
 

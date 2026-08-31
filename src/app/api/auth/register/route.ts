@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { sendVerificationEmail } from "@/lib/email"
 import { checkRateLimit, getIP, retryAfterMessage } from "@/lib/rate-limit"
+import { firstIssueMessage } from "@/lib/action-helpers"
 
 const EMAIL_VERIFICATION_ENABLED = process.env.EMAIL_VERIFICATION_ENABLED !== "false"
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     const parsed = registerSchema.safeParse(body)
 
     if (!parsed.success) {
-      const message = parsed.error.issues[0]?.message ?? "Invalid input"
+      const message = firstIssueMessage(parsed.error)
       return NextResponse.json({ error: message }, { status: 400 })
     }
 
