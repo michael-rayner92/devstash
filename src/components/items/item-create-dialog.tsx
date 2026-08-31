@@ -13,23 +13,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { FileUpload } from "@/components/ui/file-upload"
 import { FormField } from "@/components/items/form-field"
-import { ContentField } from "@/components/items/content-field"
 import { TypeSelector } from "@/components/items/type-selector"
-import { CollectionsField } from "@/components/items/collections-field"
-import { LanguageSelect } from "@/components/items/language-select"
-import { SuggestTags } from "@/components/items/suggest-tags"
-import { SuggestDescription } from "@/components/items/suggest-description"
-import { CONTENT_TYPES, isCodeType, isFileType } from "@/lib/item-fields"
+import { ItemFormFields, type ItemFormValues } from "@/components/items/item-form-fields"
+import { itemFieldVisibility } from "@/lib/item-fields"
+import { parseTagList } from "@/lib/item-tags"
 import { createItem } from "@/actions/items"
 import { uploadItemFile } from "@/lib/upload-item-file"
 import type { SidebarItemType } from "@/lib/db/sidebar"
 import type { UploadKind } from "@/lib/file-constraints"
 
-const EMPTY_FORM = {
+const EMPTY_FORM: ItemFormValues = {
   title: "",
   description: "",
   content: "",
@@ -77,13 +72,10 @@ export function ItemCreateDialog({
   const [creating, setCreating] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
 
-  const isFile = isFileType(typeName)
-  const showContent = CONTENT_TYPES.has(typeName)
-  const showLanguage = isCodeType(typeName)
-  const showUrl = typeName === "link"
+  const show = itemFieldVisibility(typeName)
   const canCreate =
     form.title.trim().length > 0 &&
-    (isFile ? file !== null : !showUrl || form.url.trim().length > 0) &&
+    (show.file ? file !== null : !show.url || form.url.trim().length > 0) &&
     !creating
 
   function selectType(name: string) {
@@ -103,19 +95,6 @@ export function ItemCreateDialog({
     }
   }
 
-  const tagList = () =>
-    form.tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-
-  function acceptSuggestedTag(tag: string) {
-    setForm((f) => {
-      const existing = f.tags.replace(/[\s,]+$/, "")
-      return { ...f, tags: existing ? `${existing}, ${tag}` : tag }
-    })
-  }
-
   // Shared completion for both the file-upload and text/url create paths.
   function finish(ok: boolean, error?: string) {
     if (ok) {
@@ -128,7 +107,7 @@ export function ItemCreateDialog({
   }
 
   async function handleCreate() {
-    if (isFile) {
+    if (show.file) {
       if (!file) return
       setCreating(true)
       setProgress(0)
@@ -137,7 +116,7 @@ export function ItemCreateDialog({
       fd.append("typeName", typeName)
       fd.append("title", form.title)
       fd.append("description", form.description)
-      fd.append("tags", tagList().join(","))
+      fd.append("tags", parseTagList(form.tags).join(","))
       fd.append("collectionIds", collectionIds.join(","))
       const result = await uploadItemFile(fd, setProgress)
       setCreating(false)
@@ -151,10 +130,10 @@ export function ItemCreateDialog({
       typeName,
       title: form.title,
       description: form.description,
-      content: showContent ? form.content : null,
-      language: showLanguage ? form.language : null,
-      url: showUrl ? form.url : null,
-      tags: tagList(),
+      content: show.content ? form.content : null,
+      language: show.language ? form.language : null,
+      url: show.url ? form.url : null,
+      tags: parseTagList(form.tags),
       collectionIds,
     })
     setCreating(false)
@@ -172,110 +151,32 @@ export function ItemCreateDialog({
         <div className="space-y-4">
           <TypeSelector types={creatableTypes} selected={typeName} onSelect={selectType} />
 
-          <FormField label="Title" htmlFor="create-title">
-            <Input
-              id="create-title"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              placeholder="Item title"
-            />
-          </FormField>
-
-          <FormField
-            label="Description"
-            htmlFor="create-description"
-            action={
-              <SuggestDescription
-                canUseAi={canUseAi}
-                source={{
-                  typeName,
-                  title: form.title,
-                  content: showContent ? form.content : null,
-                  language: showLanguage ? form.language : null,
-                  url: showUrl ? form.url : null,
-                  // Nothing is uploaded yet, so the local File is the only name available.
-                  fileName: isFile ? (file?.name ?? null) : null,
-                }}
-                onGenerated={(description) => setForm((f) => ({ ...f, description }))}
-                disabled={creating}
-              />
-            }
-          >
-            <Textarea
-              id="create-description"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              rows={2}
-              placeholder="Optional description"
-            />
-          </FormField>
-
-          {isFile && (
-            <FormField label={typeName === "image" ? "Image" : "File"}>
-              <FileUpload
-                kind={typeName as UploadKind}
-                value={file}
-                onChange={setFile}
-                disabled={creating}
-                progress={progress}
-              />
-            </FormField>
-          )}
-
-          {showLanguage && (
-            <LanguageSelect
-              id="create-language"
-              value={form.language}
-              onChange={(next) => setForm((f) => ({ ...f, language: next }))}
-              disabled={creating}
-            />
-          )}
-
-          {showContent && (
-            <ContentField
-              id="create-content"
-              typeName={typeName}
-              value={form.content}
-              onChange={(next) => setForm((f) => ({ ...f, content: next }))}
-              language={form.language}
-              rows={6}
-            />
-          )}
-
-          {showUrl && (
-            <FormField label="URL" htmlFor="create-url">
-              <Input
-                id="create-url"
-                type="url"
-                value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                placeholder="https://example.com"
-              />
-            </FormField>
-          )}
-
-          <FormField label="Tags" htmlFor="create-tags">
-            <Input
-              id="create-tags"
-              value={form.tags}
-              onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-              placeholder="comma, separated, tags"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
-            <SuggestTags
-              canUseAi={canUseAi}
-              title={form.title}
-              content={showContent ? form.content : null}
-              existingTags={tagList()}
-              onAccept={acceptSuggestedTag}
-              disabled={creating}
-            />
-          </FormField>
-
-          <CollectionsField
-            selected={collectionIds}
-            onChange={setCollectionIds}
+          <ItemFormFields
+            idPrefix="create"
+            typeName={typeName}
+            values={form}
+            onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            collectionIds={collectionIds}
+            onCollectionIdsChange={setCollectionIds}
+            canUseAi={canUseAi}
             disabled={creating}
+            // Nothing is uploaded yet, so the local File is the only name available.
+            fileName={show.file ? (file?.name ?? null) : null}
+            contentRows={6}
+            titlePlaceholder="Item title"
+            fileSlot={
+              show.file && (
+                <FormField label={typeName === "image" ? "Image" : "File"}>
+                  <FileUpload
+                    kind={typeName as UploadKind}
+                    value={file}
+                    onChange={setFile}
+                    disabled={creating}
+                    progress={progress}
+                  />
+                </FormField>
+              )
+            }
           />
         </div>
 

@@ -2,15 +2,101 @@
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+Implemented on `refactor/component-duplication` — lint + build + 457 tests pass,
+verified in-browser. Awaiting commit.
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+Behaviour-neutral refactor of the top three duplication findings from a scan of
+`src/components/` (73 files, 8,082 lines). No user-visible change; no server
+actions, DB queries, or API routes touched.
+
+1. **Shared item form fields.** `item-create-dialog.tsx` and `item-edit-form.tsx`
+   render the same seven fields, in the same order, with the same props —
+   differing only in the `create-`/`edit-` id prefix, a file-upload field, and a
+   textarea row count. The `showContent`/`showLanguage`/`showUrl` derivation, the
+   comma-separated `tagList` split, and `acceptSuggestedTag` (including the
+   `replace(/[\s,]+$/, "")` trick) are duplicated verbatim.
+   → new `ItemFormFields` component, `src/lib/item-tags.ts` (pure, tested), and
+   `itemFieldVisibility()` in `src/lib/item-fields.ts` (pure, tested).
+
+2. **Shared editor chrome.** `ui/code-editor.tsx` and `ui/markdown-editor.tsx`
+   carry near-identical copies of: `TabButton`, the AI trigger button
+   (`ExplainButton` / `OptimizeButton` — same structure and Crown/Loader2/Sparkles
+   branching, differing only in label strings), the Copy button, the
+   `markdown-preview` pane (3 copies across the two files), and the
+   `MIN_HEIGHT` / `MAX_HEIGHT` / `PRO_TOOLTIP` constants.
+   → new `ui/editor-chrome.tsx` with `EditorTabButton`, `EditorCopyButton`,
+   `AiEditorButton`, `MarkdownPane`, and the shared constants.
+
+3. **Shared drawer trigger.** Five components duplicate the same
+   `role="button" tabIndex={0} onClick onKeyDown` block plus an identical
+   Enter/Space `handleKeyDown`: `ItemCard`, `ImageCard`, `FileListRow`,
+   `ItemRow`, `FavoriteItemRow`.
+   → `useItemTriggerProps(itemId)` exported from `item-drawer-provider.tsx`
+   (kept beside `useItemDrawer` rather than in `src/lib/`, so a lib module never
+   imports from `src/components/`).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Every string, class name, and ARIA attribute is preserved exactly. The AI
+  button's six distinct copy strings per surface are passed in as a `copy`
+  object so neither button's wording changes.
+- Out of scope (findings 4–15 from the same scan): the confirm-delete dialog,
+  favorite star, collection action dialogs, controllable-open plumbing, Stripe
+  redirect, auth form fields, the `<select>` primitive, `typeIcon()`, and the
+  dead `SectionHeader` action props.
+- Also deliberately **not** extracted: the two editors' outer container + header
+  row. The markup is close but the paddings differ (`px-3 py-2` vs
+  `px-2 py-1.5`) and only the code editor puts `id`/`aria-label` on the wrapper —
+  a slot-based shell would trade ~4 saved lines for real indirection.
+- `FeatureRow` in `home/pricing-toggle.tsx` vs `billing/upgrade-plans.tsx` looks
+  like duplication but sits either side of the `.home` scoped-palette boundary;
+  merging would couple the marketing page to app design tokens. Left alone.
+- No component tests: `vitest.config.ts` includes only `src/**/*.test.ts`
+  (not `.tsx`), and the coding standards scope unit tests to `src/actions/` and
+  `src/lib/`. The two new pure modules get tests; the hook does not.
+
+## Result
+
+Per-file: create dialog 293 → 194, edit form 210 → 116, code editor 328 → 232,
+markdown editor 442 → 358 (1,273 → 900). Against that, three new shared modules
+add 397 production lines, so **total line count is roughly flat** — the win is
+that each duplicated block now exists once (and carries a doc comment), not a
+smaller codebase.
+
+Tests 434 → 457 (+23: `item-tags` 13, `itemFieldVisibility` 5, plus 5 covering
+the existing `item-fields` predicates the new helper composes). Every one of the
+434 pre-existing tests passes **unmodified**, which is the strongest evidence
+this is behaviour-neutral.
+
+Verified in-browser (Playwright, demo user, the already-running dev server on
+:3000 — no `.env.local` edits, no DB mutation left behind):
+
+- **Triggers** — click on `ItemCard`; Enter on `ItemCard` (notes) and
+  `FavoriteItemRow`; Space on `ItemRow`. Each opened the drawer on the right
+  item, with `role="button"` and `tabIndex=0` intact. `ImageCard` and
+  `FileListRow` were **not** exercised — the dev DB holds no file/image items and
+  creating one would write to the user's real R2 bucket. Their diffs are the
+  byte-identical transformation, and nothing else in either file changed.
+- **Editor chrome** — the shared `AiEditorButton` renders both variants with
+  their original strings verbatim (`Explain this code with AI` on a snippet,
+  `Improve this prompt with AI` on a prompt); `EditorCopyButton` flips
+  `Copy → Copied → Copy` in both editors now that it owns the hook itself;
+  `MarkdownPane` renders GFM (`h2` + `ul` + `li`), shows "Nothing to preview"
+  when blank, and clamps at the shared 400px; Write/Preview tabs toggle
+  `aria-selected`, and readonly mode still shows Preview only.
+- **Shared fields** — all `create-*` / `edit-*` ids and label associations
+  preserved; `itemFieldVisibility` gives the right field set per type
+  (link → URL only; note → markdown Content; image → upload; command →
+  Language + Monaco); edit mode prefills title/description/tags/language and
+  collection pills.
+- **End to end** — created a note (real AI tag suggestion returned 3 pills;
+  accepting one turned `"react, "` into `"react, refactor"`, the exact
+  `appendTag` edge case, with no double separator; dismissing removed another),
+  saved an edit (description, 3 tags, DevOps membership all persisted), then
+  deleted it. Dashboard back to 10 items / 3 collections / 2 favorites.
+- Zero console errors and zero warnings throughout.
 
 ## History
 

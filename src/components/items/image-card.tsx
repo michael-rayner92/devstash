@@ -1,30 +1,20 @@
 "use client"
 
-import type { CSSProperties, KeyboardEvent } from "react"
+import type { CSSProperties } from "react"
 import { Pin } from "lucide-react"
 import { relativeTime } from "@/lib/relative-time"
-import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { useItemTriggerProps } from "@/components/items/item-drawer-provider"
 import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ImageCard({ item }: { item: ItemWithType }) {
-  const { openItem } = useItemDrawer()
+  const triggerProps = useItemTriggerProps(item.id)
   const color = item.itemType.color
   const thumbnailUrl = `/api/items/${item.id}/download`
 
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      openItem(item.id)
-    }
-  }
-
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => openItem(item.id)}
-      onKeyDown={handleKeyDown}
+      {...triggerProps}
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card hover:border-(--type-color) transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ "--type-color": color } as CSSProperties}
     >

@@ -8,6 +8,7 @@ import {
   isFileType,
   isMarkdownType,
   isPromptType,
+  itemFieldVisibility,
 } from "./item-fields"
 
 describe("item-fields", () => {
@@ -95,5 +96,62 @@ describe("item-fields", () => {
     for (const type of MARKDOWN_TYPES) {
       if (isPromptType(type)) expect(isMarkdownType(type)).toBe(true)
     }
+  })
+})
+
+describe("itemFieldVisibility", () => {
+  it("shows content and language for code types", () => {
+    expect(itemFieldVisibility("snippet")).toEqual({
+      content: true,
+      language: true,
+      url: false,
+      file: false,
+    })
+    expect(itemFieldVisibility("command")).toEqual({
+      content: true,
+      language: true,
+      url: false,
+      file: false,
+    })
+  })
+
+  it("shows content but no language for markdown types", () => {
+    for (const type of ["note", "prompt"]) {
+      expect(itemFieldVisibility(type)).toEqual({
+        content: true,
+        language: false,
+        url: false,
+        file: false,
+      })
+    }
+  })
+
+  it("shows only the url field for links", () => {
+    expect(itemFieldVisibility("link")).toEqual({
+      content: false,
+      language: false,
+      url: true,
+      file: false,
+    })
+  })
+
+  it("shows only the file field for file and image", () => {
+    for (const type of ["file", "image"]) {
+      expect(itemFieldVisibility(type)).toEqual({
+        content: false,
+        language: false,
+        url: false,
+        file: true,
+      })
+    }
+  })
+
+  it("shows nothing optional for an unknown type", () => {
+    expect(itemFieldVisibility("custom")).toEqual({
+      content: false,
+      language: false,
+      url: false,
+      file: false,
+    })
   })
 })

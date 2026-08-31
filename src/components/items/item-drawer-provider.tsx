@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import type { KeyboardEvent, ReactNode } from "react"
 import { createContext, useCallback, useContext, useRef, useState } from "react"
 import type { ItemDetail } from "@/lib/db/items"
 import { ItemDrawer } from "./item-drawer"
@@ -17,6 +17,32 @@ export function useItemDrawer(): ItemDrawerContextValue {
     throw new Error("useItemDrawer must be used within an ItemDrawerProvider")
   }
   return ctx
+}
+
+/**
+ * Props that turn any element into a trigger that opens the item drawer:
+ * click, plus Enter/Space for keyboard users, with the button role and focus
+ * order to match. Shared by every surface that lists items — `ItemCard`,
+ * `ImageCard`, `FileListRow`, `ItemRow` and `FavoriteItemRow` each carried an
+ * identical copy of this block.
+ *
+ * Lives here rather than in `src/lib/` because it depends on the drawer
+ * context, and a lib module shouldn't import from `src/components/`.
+ */
+export function useItemTriggerProps(itemId: string) {
+  const { openItem } = useItemDrawer()
+
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    onClick: () => openItem(itemId),
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault()
+        openItem(itemId)
+      }
+    },
+  }
 }
 
 interface DrawerState {

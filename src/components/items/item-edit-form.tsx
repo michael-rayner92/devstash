@@ -5,17 +5,11 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { File, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { SheetClose } from "@/components/ui/sheet"
-import { FormField } from "@/components/items/form-field"
-import { ContentField } from "@/components/items/content-field"
-import { CollectionsField } from "@/components/items/collections-field"
-import { LanguageSelect } from "@/components/items/language-select"
-import { SuggestTags } from "@/components/items/suggest-tags"
-import { SuggestDescription } from "@/components/items/suggest-description"
+import { ItemFormFields, type ItemFormValues } from "@/components/items/item-form-fields"
 import { iconMap } from "@/lib/icon-map"
-import { CONTENT_TYPES, isCodeType } from "@/lib/item-fields"
+import { itemFieldVisibility } from "@/lib/item-fields"
+import { parseTagList } from "@/lib/item-tags"
 import { updateItem } from "@/actions/items"
 import type { ItemDetail } from "@/lib/db/items"
 
@@ -29,45 +23,34 @@ interface ItemEditFormProps {
 
 export function ItemEditForm({ detail, canUseAi, onCancel, onSaved }: ItemEditFormProps) {
   const router = useRouter()
-  const [title, setTitle] = useState(detail.title)
-  const [description, setDescription] = useState(detail.description ?? "")
-  const [content, setContent] = useState(detail.content ?? "")
-  const [language, setLanguage] = useState(detail.language ?? "")
-  const [url, setUrl] = useState(detail.url ?? "")
-  const [tags, setTags] = useState(detail.tags.map((tag) => tag.name).join(", "))
+  const [form, setForm] = useState<ItemFormValues>({
+    title: detail.title,
+    description: detail.description ?? "",
+    content: detail.content ?? "",
+    language: detail.language ?? "",
+    url: detail.url ?? "",
+    tags: detail.tags.map((tag) => tag.name).join(", "),
+  })
   const [collectionIds, setCollectionIds] = useState<string[]>(
     detail.collections.map((collection) => collection.id)
   )
   const [saving, setSaving] = useState(false)
 
   const typeName = detail.itemType.name
-  const showContent = CONTENT_TYPES.has(typeName)
-  const showLanguage = isCodeType(typeName)
-  const showUrl = typeName === "link"
+  const show = itemFieldVisibility(typeName)
   const Icon = iconMap[detail.itemType.icon] ?? File
   const color = detail.itemType.color
-  const canSave = title.trim().length > 0 && !saving
-  const tagList = tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-
-  function acceptSuggestedTag(tag: string) {
-    setTags((prev) => {
-      const existing = prev.replace(/[\s,]+$/, "")
-      return existing ? `${existing}, ${tag}` : tag
-    })
-  }
+  const canSave = form.title.trim().length > 0 && !saving
 
   async function handleSave() {
     setSaving(true)
     const result = await updateItem(detail.id, {
-      title,
-      description,
-      content: showContent ? content : null,
-      language: showLanguage ? language : null,
-      url: showUrl ? url : null,
-      tags: tagList,
+      title: form.title,
+      description: form.description,
+      content: show.content ? form.content : null,
+      language: show.language ? form.language : null,
+      url: show.url ? form.url : null,
+      tags: parseTagList(form.tags),
       collectionIds,
     })
     setSaving(false)
@@ -106,93 +89,16 @@ export function ItemEditForm({ detail, canUseAi, onCancel, onSaved }: ItemEditFo
 
       {/* Fields */}
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
-        <FormField label="Title" htmlFor="edit-title">
-          <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </FormField>
-
-        <FormField
-          label="Description"
-          htmlFor="edit-description"
-          action={
-            <SuggestDescription
-              canUseAi={canUseAi}
-              source={{
-                typeName,
-                title,
-                content: showContent ? content : null,
-                language: showLanguage ? language : null,
-                url: showUrl ? url : null,
-                // File items have no editable body; the stored name is the detail
-                // the model has to work from.
-                fileName: detail.fileName,
-              }}
-              onGenerated={setDescription}
-              disabled={saving}
-            />
-          }
-        >
-          <Textarea
-            id="edit-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            placeholder="Optional description"
-          />
-        </FormField>
-
-        {showLanguage && (
-          <LanguageSelect
-            id="edit-language"
-            value={language}
-            onChange={setLanguage}
-            disabled={saving}
-          />
-        )}
-
-        {showContent && (
-          <ContentField
-            id="edit-content"
-            typeName={typeName}
-            value={content}
-            onChange={setContent}
-            language={language}
-          />
-        )}
-
-        {showUrl && (
-          <FormField label="URL" htmlFor="edit-url">
-            <Input
-              id="edit-url"
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com"
-            />
-          </FormField>
-        )}
-
-        <FormField label="Tags" htmlFor="edit-tags">
-          <Input
-            id="edit-tags"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="comma, separated, tags"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">Separate tags with commas.</p>
-          <SuggestTags
-            canUseAi={canUseAi}
-            title={title}
-            content={showContent ? content : null}
-            existingTags={tagList}
-            onAccept={acceptSuggestedTag}
-            disabled={saving}
-          />
-        </FormField>
-
-        <CollectionsField
-          selected={collectionIds}
-          onChange={setCollectionIds}
+        <ItemFormFields
+          idPrefix="edit"
+          typeName={typeName}
+          values={form}
+          onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+          collectionIds={collectionIds}
+          onCollectionIdsChange={setCollectionIds}
+          canUseAi={canUseAi}
           disabled={saving}
+          fileName={detail.fileName}
         />
       </div>
 
