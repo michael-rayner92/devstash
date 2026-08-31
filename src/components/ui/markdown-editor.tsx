@@ -3,18 +3,31 @@
 import type { ReactNode, RefObject } from "react"
 import type { OptimizedPrompt } from "@/lib/ai/optimize"
 import { useCallback, useEffect, useRef, useState } from "react"
-import Markdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { Check, Copy, Crown, Loader2, Sparkles } from "lucide-react"
-import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
+import { Loader2, Sparkles } from "lucide-react"
+import {
+  AiEditorButton,
+  EDITOR_MAX_HEIGHT,
+  EDITOR_MIN_HEIGHT,
+  EditorCopyButton,
+  EditorTabButton,
+  MarkdownPane,
+  type AiEditorButtonCopy,
+} from "@/components/ui/editor-chrome"
 import { cn } from "@/lib/utils"
-
-const MAX_HEIGHT = 400
-const MIN_HEIGHT = 120
 
 // The editor chrome is always dark (matching the CodeEditor) regardless of the app theme.
 const EDITOR_BG = "#1e1e1e"
 const HEADER_BG = "#2d2d2d"
+
+/** Wording for this editor's AI trigger; the button itself is shared chrome. */
+const OPTIMIZE_COPY: AiEditorButtonCopy = {
+  label: "Optimize",
+  pendingLabel: "Optimizing",
+  action: "Improve this prompt with AI",
+  empty: "Nothing to optimize",
+  srName: "Optimize prompt",
+  pendingAria: "Optimizing prompt",
+}
 
 type Tab = "write" | "preview" | "optimized"
 
@@ -69,7 +82,6 @@ export function MarkdownEditor({
   const [optimization, setOptimization] = useState<OptimizedPrompt | null>(null)
   const [optimizing, setOptimizing] = useState(false)
   const [applying, setApplying] = useState(false)
-  const { copied, copy } = useCopyToClipboard()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Resolve the requested tab against what actually exists right now: readonly
@@ -110,13 +122,16 @@ export function MarkdownEditor({
     setTab(readOnly ? "preview" : "write")
   }
 
-  // Grow the textarea to fit its content, clamped between MIN and MAX; beyond
-  // MAX the textarea scrolls. Mirrors the CodeEditor's fluid-height behavior.
+  // Grow the textarea to fit its content, clamped between the shared min and
+  // max; beyond the max the textarea scrolls. Mirrors the CodeEditor.
   const resize = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
     el.style.height = "auto"
-    el.style.height = `${Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, el.scrollHeight))}px`
+    el.style.height = `${Math.min(
+      EDITOR_MAX_HEIGHT,
+      Math.max(EDITOR_MIN_HEIGHT, el.scrollHeight)
+    )}px`
   }, [])
 
   useEffect(() => {
@@ -135,44 +150,36 @@ export function MarkdownEditor({
       >
         <div className="flex min-w-0 items-center gap-1" role="tablist">
           {!readOnly && (
-            <TabButton active={activeTab === "write"} onClick={() => setTab("write")}>
+            <EditorTabButton active={activeTab === "write"} onClick={() => setTab("write")}>
               Write
-            </TabButton>
+            </EditorTabButton>
           )}
-          <TabButton active={activeTab === "preview"} onClick={() => setTab("preview")}>
+          <EditorTabButton active={activeTab === "preview"} onClick={() => setTab("preview")}>
             {/* Reads as "Original" once there is a rewrite to compare it against. */}
             {optimization ? "Original" : "Preview"}
-          </TabButton>
+          </EditorTabButton>
           {optimization && (
-            <TabButton active={activeTab === "optimized"} onClick={() => setTab("optimized")}>
+            <EditorTabButton
+              active={activeTab === "optimized"}
+              onClick={() => setTab("optimized")}
+            >
               Optimized
-            </TabButton>
+            </EditorTabButton>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {/* Replaced by the Optimized tab once a rewrite exists — dismissing it
               or reopening the drawer brings the button back. */}
           {optimize && !optimization && (
-            <OptimizeButton
+            <AiEditorButton
               canUseAi={optimize.canUseAi}
               pending={optimizing}
               disabled={!value.trim()}
+              copy={OPTIMIZE_COPY}
               onClick={requestOptimization}
             />
           )}
-          <button
-            type="button"
-            onClick={() => copy(copyTarget)}
-            disabled={!copyTarget}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-white/5 hover:text-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-            {copied ? "Copied" : "Copy"}
-          </button>
+          <EditorCopyButton value={copyTarget} />
         </div>
       </div>
 
@@ -196,19 +203,13 @@ export function MarkdownEditor({
           placeholder={placeholder}
           spellCheck={false}
           className="block w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-neutral-200 placeholder:text-neutral-600 focus:outline-none"
-          style={{ minHeight: MIN_HEIGHT }}
+          style={{ minHeight: EDITOR_MIN_HEIGHT }}
         />
       ) : (
-        <div
-          className="markdown-preview overflow-y-auto px-4 py-3"
-          style={{ minHeight: MIN_HEIGHT, maxHeight: MAX_HEIGHT }}
-        >
-          {value.trim() ? (
-            <Markdown remarkPlugins={[remarkGfm]}>{value}</Markdown>
-          ) : (
-            <p className="text-sm text-neutral-600">Nothing to preview</p>
-          )}
-        </div>
+        <MarkdownPane
+          value={value}
+          empty={<p className="text-sm text-neutral-600">Nothing to preview</p>}
+        />
       )}
     </div>
   )
@@ -274,10 +275,13 @@ function OptimizedPanel({
 
   return (
     <>
-      <div className="overflow-y-auto" style={{ minHeight: MIN_HEIGHT, maxHeight: MAX_HEIGHT }}>
-        <div className="markdown-preview px-4 py-3">
-          <Markdown remarkPlugins={[remarkGfm]}>{optimization.optimized}</Markdown>
-        </div>
+      <div
+        className="overflow-y-auto"
+        style={{ minHeight: EDITOR_MIN_HEIGHT, maxHeight: EDITOR_MAX_HEIGHT }}
+      >
+        {/* The pane doesn't scroll itself here — this container scrolls the
+            rewrite and its "what changed" list together. */}
+        <MarkdownPane value={optimization.optimized} scroll={false} />
 
         {optimization.changes.length > 0 && (
           <div className="border-t border-white/10 px-4 py-3">
@@ -346,95 +350,6 @@ function PanelButton({
         primary
           ? "bg-neutral-100 text-neutral-900 hover:bg-white disabled:hover:bg-neutral-100"
           : "text-neutral-400 hover:bg-white/5 hover:text-neutral-100 disabled:hover:bg-transparent"
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-const PRO_TOOLTIP = "AI features require Pro subscription"
-
-/**
- * The AI optimize trigger. For users without AI access it becomes an inert Crown
- * marker rather than disappearing, so the feature is discoverable as something
- * Pro unlocks — matching `ExplainButton` in the code editor.
- *
- * The `title` sits on the wrapper, not the button: a disabled button receives no
- * pointer events, so a tooltip on it never shows.
- */
-function OptimizeButton({
-  canUseAi,
-  pending,
-  disabled,
-  onClick,
-}: {
-  canUseAi: boolean
-  pending: boolean
-  disabled: boolean
-  onClick: () => void
-}) {
-  const buttonClass =
-    "flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors disabled:hover:bg-transparent"
-
-  if (!canUseAi) {
-    return (
-      <span title={PRO_TOOLTIP}>
-        <button
-          type="button"
-          disabled
-          aria-label={`Optimize prompt. ${PRO_TOOLTIP}`}
-          className={cn(buttonClass, "cursor-not-allowed text-neutral-500")}
-        >
-          <Crown className="h-3.5 w-3.5 text-amber-400/70" />
-          Optimize
-        </button>
-      </span>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={pending || disabled}
-      title={disabled ? "Nothing to optimize" : "Improve this prompt with AI"}
-      aria-label={pending ? "Optimizing prompt" : "Improve this prompt with AI"}
-      className={cn(
-        buttonClass,
-        "text-neutral-400 hover:bg-white/5 hover:text-neutral-100 disabled:opacity-40"
-      )}
-    >
-      {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Sparkles className="h-3.5 w-3.5" />
-      )}
-      {pending ? "Optimizing" : "Optimize"}
-    </button>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "rounded px-2 py-0.5 text-xs transition-colors",
-        active
-          ? "bg-white/10 text-neutral-100"
-          : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
       )}
     >
       {children}

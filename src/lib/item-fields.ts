@@ -47,3 +47,30 @@ export function isFileType(typeName: string): boolean {
 export function isPromptType(typeName: string): boolean {
   return typeName === "prompt"
 }
+
+/** Which optional fields an item type's form shows. */
+export interface ItemFieldVisibility {
+  /** Free-text body (snippet, prompt, command, note). */
+  content: boolean
+  /** Language dropdown, and syntax highlighting in the editor (snippet, command). */
+  language: boolean
+  /** URL input — required for link items. */
+  url: boolean
+  /** File upload instead of a text/url body (file, image). */
+  file: boolean
+}
+
+/**
+ * The field visibility for one item type, in one place. Both item forms need
+ * these flags twice over — to decide what to render, and to null out the fields
+ * a type doesn't carry when building the submit payload — so deriving them
+ * inline meant four copies of the same four rules.
+ */
+export function itemFieldVisibility(typeName: string): ItemFieldVisibility {
+  return {
+    content: CONTENT_TYPES.has(typeName),
+    language: isCodeType(typeName),
+    url: typeName === "link",
+    file: isFileType(typeName),
+  }
+}

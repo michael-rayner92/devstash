@@ -1,30 +1,19 @@
 "use client"
 
-import type { KeyboardEvent } from "react"
 import { File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
-import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { useItemTriggerProps } from "@/components/items/item-drawer-provider"
 import type { FavoriteItem } from "@/lib/db/favorites"
 
 export function FavoriteItemRow({ item }: { item: FavoriteItem }) {
-  const { openItem } = useItemDrawer()
+  const triggerProps = useItemTriggerProps(item.id)
   const Icon = iconMap[item.itemType.icon] ?? File
   const color = item.itemType.color
 
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      openItem(item.id)
-    }
-  }
-
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => openItem(item.id)}
-      onKeyDown={handleKeyDown}
+      {...triggerProps}
       className="group flex cursor-pointer items-center gap-3 px-3 py-2 font-mono text-sm transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <Icon className="h-4 w-4 shrink-0" style={{ color }} />

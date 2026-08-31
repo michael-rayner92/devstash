@@ -1,27 +1,20 @@
 "use client"
 
-import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
+import type { CSSProperties, MouseEvent } from "react"
 import { Download, File, Pin } from "lucide-react"
 import { relativeTime } from "@/lib/relative-time"
 import { extensionOf, formatSize } from "@/lib/file-constraints"
 import { EXTENSION_ICON } from "@/lib/file-icon"
-import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { useItemTriggerProps } from "@/components/items/item-drawer-provider"
 import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function FileListRow({ item }: { item: ItemWithType }) {
-  const { openItem } = useItemDrawer()
+  const triggerProps = useItemTriggerProps(item.id)
   const color = item.itemType.color
   const fileName = item.fileName ?? item.title
   const Icon = EXTENSION_ICON[extensionOf(fileName)] ?? File
   const downloadUrl = `/api/items/${item.id}/download?download=1`
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      openItem(item.id)
-    }
-  }
 
   function handleDownloadClick(event: MouseEvent<HTMLAnchorElement>) {
     event.stopPropagation()
@@ -29,10 +22,7 @@ export function FileListRow({ item }: { item: ItemWithType }) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => openItem(item.id)}
-      onKeyDown={handleKeyDown}
+      {...triggerProps}
       className="group flex flex-col gap-3 border-b border-border p-4 last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:gap-4"
       style={{ "--type-color": color } as CSSProperties}
     >

@@ -1,20 +1,31 @@
 "use client"
 
 import type { BeforeMount, OnMount } from "@monaco-editor/react"
-import type { RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import Editor from "@monaco-editor/react"
-import Markdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { Check, Copy, Crown, Loader2, Sparkles } from "lucide-react"
 import { monacoLanguage } from "@/lib/code-language"
 import { EDITOR_CHROME, defineEditorThemes } from "@/lib/monaco-themes"
 import { useEditorPreferences } from "@/components/editor-preferences/editor-preferences-provider"
-import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
+import {
+  AiEditorButton,
+  EDITOR_MAX_HEIGHT,
+  EDITOR_MIN_HEIGHT,
+  EditorCopyButton,
+  EditorTabButton,
+  MarkdownPane,
+  type AiEditorButtonCopy,
+} from "@/components/ui/editor-chrome"
 import { cn } from "@/lib/utils"
 
-const MAX_HEIGHT = 400
-const MIN_HEIGHT = 120
+/** Wording for this editor's AI trigger; the button itself is shared chrome. */
+const EXPLAIN_COPY: AiEditorButtonCopy = {
+  label: "Explain",
+  pendingLabel: "Explaining",
+  action: "Explain this code with AI",
+  empty: "Nothing to explain",
+  srName: "Explain code",
+  pendingAria: "Explaining code",
+}
 
 // Register the selectable themes and turn off TS/JS validation — this is a snippet
 // store, not an IDE, so "cannot find module" squiggles on standalone snippets are
@@ -74,12 +85,11 @@ export function CodeEditor({
   className,
   explain,
 }: CodeEditorProps) {
-  const [height, setHeight] = useState(MIN_HEIGHT)
+  const [height, setHeight] = useState(EDITOR_MIN_HEIGHT)
   const [tab, setTab] = useState<Tab>("code")
   const [explanation, setExplanation] = useState<string | null>(null)
   const [explaining, setExplaining] = useState(false)
   const explainTabRef = useRef<HTMLButtonElement>(null)
-  const { copied, copy } = useCopyToClipboard()
   const { preferences } = useEditorPreferences()
 
   // Requesting an explanation unmounts the Explain button to make room for the
@@ -111,10 +121,13 @@ export function CodeEditor({
   }
 
   const handleMount: OnMount = (editor) => {
-    // Grow the editor to fit its content, clamped between MIN_HEIGHT and MAX_HEIGHT.
-    // Beyond MAX_HEIGHT, Monaco's own (themed) scrollbar takes over.
+    // Grow the editor to fit its content, clamped between the shared min and
+    // max. Beyond the max, Monaco's own (themed) scrollbar takes over.
     const updateHeight = () => {
-      const next = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, editor.getContentHeight()))
+      const next = Math.min(
+        EDITOR_MAX_HEIGHT,
+        Math.max(EDITOR_MIN_HEIGHT, editor.getContentHeight())
+      )
       setHeight(next)
     }
     updateHeight()
@@ -142,16 +155,16 @@ export function CodeEditor({
           </div>
           {explanation && (
             <div className="flex items-center gap-1" role="tablist">
-              <TabButton active={activeTab === "code"} onClick={() => setTab("code")}>
+              <EditorTabButton active={activeTab === "code"} onClick={() => setTab("code")}>
                 Code
-              </TabButton>
-              <TabButton
+              </EditorTabButton>
+              <EditorTabButton
                 active={activeTab === "explain"}
                 buttonRef={explainTabRef}
                 onClick={() => setTab("explain")}
               >
                 Explain
-              </TabButton>
+              </EditorTabButton>
             </div>
           )}
         </div>
@@ -162,36 +175,20 @@ export function CodeEditor({
           {/* Replaced by the tabs above once an explanation exists — reopening
               the drawer clears it and brings the button back. */}
           {explain && !explanation && (
-            <ExplainButton
+            <AiEditorButton
               canUseAi={explain.canUseAi}
               pending={explaining}
               disabled={!value}
+              copy={EXPLAIN_COPY}
               onClick={requestExplanation}
             />
           )}
-          <button
-            type="button"
-            onClick={() => copy(copyTarget)}
-            disabled={!copyTarget}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-white/5 hover:text-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-            {copied ? "Copied" : "Copy"}
-          </button>
+          <EditorCopyButton value={copyTarget} />
         </div>
       </div>
 
       {activeTab === "explain" && explanation ? (
-        <div
-          className="markdown-preview overflow-y-auto px-4 py-3"
-          style={{ minHeight: MIN_HEIGHT, maxHeight: MAX_HEIGHT }}
-        >
-          <Markdown remarkPlugins={[remarkGfm]}>{explanation}</Markdown>
-        </div>
+        <MarkdownPane value={explanation} />
       ) : (
         <Editor
           height={height}
@@ -231,98 +228,5 @@ export function CodeEditor({
         />
       )}
     </div>
-  )
-}
-
-const PRO_TOOLTIP = "AI features require Pro subscription"
-
-/**
- * The AI explain trigger. For users without AI access it becomes an inert Crown
- * marker rather than disappearing, so the feature is discoverable as something
- * Pro unlocks.
- *
- * The `title` sits on the wrapper, not the button: a disabled button receives no
- * pointer events, so a tooltip on it never shows.
- */
-function ExplainButton({
-  canUseAi,
-  pending,
-  disabled,
-  onClick,
-}: {
-  canUseAi: boolean
-  pending: boolean
-  disabled: boolean
-  onClick: () => void
-}) {
-  const buttonClass =
-    "flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors disabled:hover:bg-transparent"
-
-  if (!canUseAi) {
-    return (
-      <span title={PRO_TOOLTIP}>
-        <button
-          type="button"
-          disabled
-          aria-label={`Explain code. ${PRO_TOOLTIP}`}
-          className={cn(buttonClass, "cursor-not-allowed text-neutral-500")}
-        >
-          <Crown className="h-3.5 w-3.5 text-amber-400/70" />
-          Explain
-        </button>
-      </span>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={pending || disabled}
-      title={disabled ? "Nothing to explain" : "Explain this code with AI"}
-      aria-label={pending ? "Explaining code" : "Explain this code with AI"}
-      className={cn(
-        buttonClass,
-        "text-neutral-400 hover:bg-white/5 hover:text-neutral-100 disabled:opacity-40"
-      )}
-    >
-      {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Sparkles className="h-3.5 w-3.5" />
-      )}
-      {pending ? "Explaining" : "Explain"}
-    </button>
-  )
-}
-
-function TabButton({
-  active,
-  buttonRef,
-  onClick,
-  children,
-}: {
-  active: boolean
-  /** Set on a tab that should take focus when it appears. */
-  buttonRef?: RefObject<HTMLButtonElement | null>
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      ref={buttonRef}
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "rounded px-2 py-0.5 text-xs transition-colors",
-        active
-          ? "bg-white/10 text-neutral-100"
-          : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
-      )}
-    >
-      {children}
-    </button>
   )
 }

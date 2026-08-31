@@ -1,30 +1,23 @@
 "use client"
 
-import type { CSSProperties, KeyboardEvent, MouseEvent } from "react"
+import type { CSSProperties, MouseEvent } from "react"
 import { Check, Copy, Pin, File } from "lucide-react"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
 import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 import { typeTextColor } from "@/lib/type-color"
-import { useItemDrawer } from "@/components/items/item-drawer-provider"
+import { useItemTriggerProps } from "@/components/items/item-drawer-provider"
 import { ItemFavoriteButton } from "@/components/items/item-favorite-button"
 import type { ItemWithType } from "@/lib/db/items"
 
 export function ItemCard({ item }: { item: ItemWithType }) {
-  const { openItem } = useItemDrawer()
+  const triggerProps = useItemTriggerProps(item.id)
   const { copied, copy } = useCopyToClipboard()
   const type = item.itemType
   const Icon = iconMap[type.icon] ?? File
   const color = type.color
   const preview = item.description ?? item.content?.slice(0, 120) ?? item.url ?? ""
   const copyText = item.content ?? item.url ?? ""
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      openItem(item.id)
-    }
-  }
 
   function handleCopy(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation()
@@ -33,10 +26,7 @@ export function ItemCard({ item }: { item: ItemWithType }) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => openItem(item.id)}
-      onKeyDown={handleKeyDown}
+      {...triggerProps}
       className="group flex flex-col rounded-xl border border-border border-l-4 bg-card p-4 hover:border-(--type-color) transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ "--type-color": color, borderLeftColor: color } as CSSProperties}
     >
