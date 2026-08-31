@@ -1,7 +1,7 @@
 "use server"
 
 import { z } from "zod"
-import { auth } from "@/auth"
+import { firstIssueMessage, requireSession } from "@/lib/action-helpers"
 import { AI_MODEL, aiConfigured, getOpenAI } from "@/lib/ai/client"
 import { aiErrorMessage } from "@/lib/ai/errors"
 import {
@@ -113,15 +113,15 @@ const generateAutoTagsSchema = z
 export async function generateAutoTags(
   input: GenerateAutoTagsInput
 ): Promise<GenerateAutoTagsResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
   const userId = session.user.id
 
   const parsed = generateAutoTagsSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   const gate = await aiGate(userId)
@@ -206,15 +206,15 @@ const generateDescriptionSchema = z
 export async function generateDescription(
   input: GenerateDescriptionInput
 ): Promise<GenerateDescriptionResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
   const userId = session.user.id
 
   const parsed = generateDescriptionSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   const gate = await aiGate(userId)
@@ -288,15 +288,15 @@ const explainCodeSchema = z.object({
  * the drawer and is regenerated on the next click.
  */
 export async function explainCode(input: ExplainCodeInput): Promise<ExplainCodeResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
   const userId = session.user.id
 
   const parsed = explainCodeSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   // Loaded before `aiGate` on purpose. A missing, unowned or unexplainable item
@@ -395,15 +395,15 @@ const optimizePromptSchema = z.object({
 export async function optimizePrompt(
   input: OptimizePromptInput
 ): Promise<OptimizePromptResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
   const userId = session.user.id
 
   const parsed = optimizePromptSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   // Loaded before `aiGate`, matching `explainCode`: a missing, unowned or empty

@@ -1,7 +1,12 @@
 "use server"
 
 import { z } from "zod"
-import { auth } from "@/auth"
+import {
+  GENERIC_ACTION_ERROR,
+  firstIssueMessage,
+  requireSession,
+  trimmedOrNull,
+} from "@/lib/action-helpers"
 import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
@@ -27,10 +32,6 @@ export interface UpdateItemInput {
 export type UpdateItemResult =
   | { success: true; data: ItemDetail }
   | { success: false; error: string }
-
-// Trim strings and collapse empties to null; leave non-strings (e.g. null) alone.
-const trimmedOrNull = (v: unknown) =>
-  typeof v === "string" ? (v.trim() === "" ? null : v.trim()) : v
 
 // Like `trimmedOrNull` but preserves internal/leading whitespace (code, prose).
 const contentOrNull = (v: unknown) =>
@@ -60,14 +61,14 @@ export async function updateItem(
   itemId: string,
   input: UpdateItemInput
 ): Promise<UpdateItemResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
   const parsed = updateItemSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   try {
@@ -77,7 +78,7 @@ export async function updateItem(
     }
     return { success: true, data: updated }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -116,14 +117,14 @@ const createItemSchema = z
   })
 
 export async function createItem(input: CreateItemInput): Promise<CreateItemResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
   const parsed = createItemSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   try {
@@ -141,7 +142,7 @@ export async function createItem(input: CreateItemInput): Promise<CreateItemResu
     }
     return { success: true, data: created }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -150,8 +151,8 @@ export type DeleteItemResult =
   | { success: false; error: string }
 
 export async function deleteItem(itemId: string): Promise<DeleteItemResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -173,7 +174,7 @@ export async function deleteItem(itemId: string): Promise<DeleteItemResult> {
 
     return { success: true }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -182,8 +183,8 @@ export type ToggleFavoriteResult =
   | { success: false; error: string }
 
 export async function toggleItemFavorite(itemId: string): Promise<ToggleFavoriteResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -194,7 +195,7 @@ export async function toggleItemFavorite(itemId: string): Promise<ToggleFavorite
     }
     return { success: true, data: result }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -203,8 +204,8 @@ export type TogglePinResult =
   | { success: false; error: string }
 
 export async function toggleItemPin(itemId: string): Promise<TogglePinResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -215,6 +216,6 @@ export async function toggleItemPin(itemId: string): Promise<TogglePinResult> {
     }
     return { success: true, data: result }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }

@@ -1,7 +1,12 @@
 "use server"
 
 import { z } from "zod"
-import { auth } from "@/auth"
+import {
+  GENERIC_ACTION_ERROR,
+  firstIssueMessage,
+  requireSession,
+  trimmedOrNull,
+} from "@/lib/action-helpers"
 import {
   createCollection as createCollectionQuery,
   updateCollection as updateCollectionQuery,
@@ -11,10 +16,6 @@ import {
 import type { CollectionSummary } from "@/lib/db/collections"
 import { getPlanUsage } from "@/lib/db/billing"
 import { collectionLimitError } from "@/lib/usage-limits"
-
-// Trim strings and collapse empties to null; leave non-strings (e.g. null) alone.
-const trimmedOrNull = (v: unknown) =>
-  typeof v === "string" ? (v.trim() === "" ? null : v.trim()) : v
 
 export interface CreateCollectionInput {
   name: string
@@ -33,14 +34,14 @@ const createCollectionSchema = z.object({
 export async function createCollection(
   input: CreateCollectionInput
 ): Promise<CreateCollectionResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
   const parsed = createCollectionSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   try {
@@ -54,7 +55,7 @@ export async function createCollection(
     const created = await createCollectionQuery(session.user.id, parsed.data)
     return { success: true, data: created }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -76,14 +77,14 @@ export async function updateCollection(
   id: string,
   input: UpdateCollectionInput
 ): Promise<UpdateCollectionResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
   const parsed = updateCollectionSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { success: false, error: firstIssueMessage(parsed.error) }
   }
 
   try {
@@ -93,7 +94,7 @@ export async function updateCollection(
     }
     return { success: true, data: updated }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -102,8 +103,8 @@ export type DeleteCollectionResult =
   | { success: false; error: string }
 
 export async function deleteCollection(id: string): Promise<DeleteCollectionResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -114,7 +115,7 @@ export async function deleteCollection(id: string): Promise<DeleteCollectionResu
     }
     return { success: true }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
@@ -123,8 +124,8 @@ export type ToggleFavoriteResult =
   | { success: false; error: string }
 
 export async function toggleCollectionFavorite(id: string): Promise<ToggleFavoriteResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -135,6 +136,6 @@ export async function toggleCollectionFavorite(id: string): Promise<ToggleFavori
     }
     return { success: true, data: result }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }

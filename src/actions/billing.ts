@@ -1,7 +1,7 @@
 "use server"
 
 import { z } from "zod"
-import { auth } from "@/auth"
+import { GENERIC_ACTION_ERROR, requireSession } from "@/lib/action-helpers"
 import { PRICE_IDS, baseUrl, getStripe } from "@/lib/stripe"
 import type { BillingInterval } from "@/lib/stripe"
 import { getBillingStatus, setStripeCustomerId } from "@/lib/db/billing"
@@ -23,8 +23,8 @@ const checkoutSchema = z.object({
 export async function createCheckoutSession(
   interval: BillingInterval
 ): Promise<BillingSessionResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -82,14 +82,14 @@ export async function createCheckoutSession(
     }
     return { success: true, data: { url: checkout.url } }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
 
 /** Open the Stripe-hosted customer portal (manage / cancel / update card). */
 export async function createBillingPortalSession(): Promise<BillingSessionResult> {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const session = await requireSession()
+  if (!session) {
     return { success: false, error: "Not authenticated" }
   }
 
@@ -106,6 +106,6 @@ export async function createBillingPortalSession(): Promise<BillingSessionResult
 
     return { success: true, data: { url: portal.url } }
   } catch {
-    return { success: false, error: "Something went wrong. Please try again." }
+    return { success: false, error: GENERIC_ACTION_ERROR }
   }
 }
