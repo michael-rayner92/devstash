@@ -2,15 +2,106 @@
 
 ## Status
 
-<!-- Not Started | In Progress | Complete -->
+Implemented on `refactor/component-duplication-2` — lint + build + 457 tests
+pass, verified in-browser. Awaiting merge.
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+Second pass on the component duplication scan: findings 4-8, the contained ones.
+Behaviour-neutral except where noted; no server actions, DB queries, or API
+routes touched.
+
+4. **Confirm-delete dialog.** `item-delete-dialog.tsx` and
+   `collection-delete-dialog.tsx` are the same `AlertDialog` shell — same
+   `buttonVariants({ variant: "destructive" })` cast, same `e.preventDefault()`
+   keep-open pattern, same `useTransition`, same Cancel/"Deleting…" copy.
+   → new `ui/confirm-dialog.tsx`.
+
+5. **Favorite star.** `ItemFavoriteButton` and the inline star in
+   `CollectionCard` share every class but three. → new
+   `ui/favorite-star-button.tsx`.
+
+6. **Collection action dialogs.** `CollectionCardMenu` and
+   `CollectionDetailActions` both own `editOpen`/`deleteOpen` and both mount
+   both dialogs. → new `collections/collection-dialogs.tsx`.
+
+7. **Controllable open.** The `isControlled ? … : …` plumbing is duplicated
+   between the item and collection create dialogs.
+   → new `src/lib/use-controllable-open.ts`.
+
+8. **Stripe redirect.** `BillingSection.go()` and `UpgradePlans.checkout()` are
+   the same transition + `window.location.href` + toast.
+   → new `src/lib/use-billing-redirect.ts`.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **One deliberate visual change, not behaviour-neutral:** the collection card's
+  star was `fill-yellow-400`, while the drawer star, the card menu item and the
+  detail-page button all use `amber-400`. Unifying on amber makes the shared
+  component honest; the alternative — a fill-color prop — would bake the
+  inconsistency into the very thing meant to remove it. `yellow-400` (#facc15)
+  → `amber-400` (#fbbf24) is a one-shade shift on a 16px icon.
+- `CollectionDetailActions`' star is **not** folded into the shared button: it's
+  an `outline` `Button` in a page-header toolbar, not a hover-revealed overlay
+  star, so sharing would change how it looks.
+- `useBillingRedirect` declares the action's result shape locally rather than
+  importing `BillingSessionResult` from `@/actions/billing`, following
+  `use-favorite-toggle.ts` — a lib module shouldn't depend on the action layer.
+- **No new unit tests**: every extraction here is a React hook or a component,
+  and `vitest.config.ts` includes only `src/**/*.test.ts` while the coding
+  standards scope tests to `src/actions/` and `src/lib/` pure utilities. That
+  puts more weight on in-browser verification than the first pass, where two
+  pure modules carried 23 new tests.
+
+## Result
+
+Five extractions, +428/-260 across 15 files; the five new shared modules total
+306 lines. Tests stay at 457 (all pass, none modified).
+
+The one design call worth recording: **`ConfirmDialog` owns the transition but
+does not close itself.** Closing after `onConfirm` resolves would have reordered
+the item delete path — `onDeleted()` resets the drawer that contains the alert's
+own trigger, so the alert must close first or Radix tries to return focus to an
+unmounted element. Leaving the close to the caller keeps both call sites' exact
+existing order.
+
+Verified in-browser (Playwright, demo user, the already-running dev server on
+:3000 — no `.env.local` edits; all state restored afterwards):
+
+- **ConfirmDialog** — collection delete renders the same title, the same
+  description, and byte-identical `buttonVariants({ variant: "destructive" }) +
+  hover:bg-destructive/90` classes; cancel closes clean with
+  `body { pointer-events: auto }` and 3 collections intact. Item delete (the
+  variant *with* a trigger) showed the "Deleting…" pending label, proving the
+  dialog now drives the transition, then toasted, closed the alert **and** the
+  drawer, restored `pointer-events`, and left focus on `body` rather than a
+  dangling unmounted trigger — the ordering case above.
+- **FavoriteStarButton** — the collection card star toggled
+  `Add → Remove from favorites` with `aria-pressed` flipping, and the icon
+  computed to `lab(80.16 16.60 99.21)` = `amber-400`, confirming the intended
+  one-shade unification. Toggled back; sidebar Favourites is back to
+  AI Workflows + React Patterns.
+- **CollectionDialogs** — the card menu opens without navigating the card
+  (the `<Link>` overlay boundary still holds), Edit prefills name and
+  description, and closing a dialog opened *from the menu* leaves
+  `body { pointer-events: auto }` — the Radix menu→dialog cleanup race stays
+  fixed.
+- **useControllableOpen** — both paths. Uncontrolled (the type page's
+  "New snippet" trigger): preselects `snippet`, and a dirtied title is cleared
+  on reopen with Create disabled again. Controlled (the header buttons): both
+  dialogs open, and the collection form's `DIRTY COLLECTION` is reset to `""`
+  on reopen.
+- **useBillingRedirect** — clicking "Manage subscription" showed the "Opening…"
+  pending label and actually navigated to
+  `billing.stripe.com/p/session?secret=test_…`, a real test-mode portal session.
+  `/upgrade`'s checkout button shares the identical `go()` path but was **not**
+  exercised: the demo user is Pro, so `/upgrade` redirects to `/settings#billing`
+  by design.
+- Created and deleted one throwaway snippet end to end; dashboard back to
+  10 items / 3 collections / 2 favorites. Zero console errors and zero warnings.
+
+Benign side effect: the two favorite toggles bumped the DevOps collection's
+`updatedAt` (it now reads "Updated 0m ago"). Unavoidable when testing a toggle.
 
 ## History
 

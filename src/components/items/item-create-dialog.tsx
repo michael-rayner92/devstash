@@ -19,6 +19,7 @@ import { TypeSelector } from "@/components/items/type-selector"
 import { ItemFormFields, type ItemFormValues } from "@/components/items/item-form-fields"
 import { itemFieldVisibility } from "@/lib/item-fields"
 import { parseTagList } from "@/lib/item-tags"
+import { useControllableOpen } from "@/lib/use-controllable-open"
 import { createItem } from "@/actions/items"
 import { uploadItemFile } from "@/lib/upload-item-file"
 import type { SidebarItemType } from "@/lib/db/sidebar"
@@ -62,15 +63,25 @@ export function ItemCreateDialog({
     (initialType && creatableTypes.some((type) => type.name === initialType)
       ? initialType
       : creatableTypes[0]?.name) ?? ""
-  const [internalOpen, setInternalOpen] = useState(false)
-  const isControlled = controlledOpen !== undefined
-  const open = isControlled ? controlledOpen : internalOpen
   const [typeName, setTypeName] = useState(defaultType)
   const [form, setForm] = useState(EMPTY_FORM)
   const [collectionIds, setCollectionIds] = useState<string[]>([])
   const [file, setFile] = useState<File | null>(null)
   const [creating, setCreating] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
+
+  // Discard the form on close, whichever path closed it.
+  const { open, setOpen: handleOpenChange } = useControllableOpen(
+    controlledOpen,
+    onOpenChange,
+    () => {
+      setForm(EMPTY_FORM)
+      setCollectionIds([])
+      setFile(null)
+      setProgress(null)
+      setTypeName(defaultType)
+    }
+  )
 
   const show = itemFieldVisibility(typeName)
   const canCreate =
@@ -81,18 +92,6 @@ export function ItemCreateDialog({
   function selectType(name: string) {
     setTypeName(name)
     setFile(null)
-  }
-
-  function handleOpenChange(next: boolean) {
-    if (isControlled) onOpenChange?.(next)
-    else setInternalOpen(next)
-    if (!next) {
-      setForm(EMPTY_FORM)
-      setCollectionIds([])
-      setFile(null)
-      setProgress(null)
-      setTypeName(defaultType)
-    }
   }
 
   // Shared completion for both the file-upload and text/url create paths.

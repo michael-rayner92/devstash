@@ -1,14 +1,12 @@
 "use client"
 
-import { useTransition } from "react"
 import Link from "next/link"
 import { AlertTriangle, Check } from "lucide-react"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { ProBadge } from "@/components/billing/plan-badge"
 import { createBillingPortalSession } from "@/actions/billing"
-import type { BillingSessionResult } from "@/actions/billing"
 import type { BillingStatus } from "@/lib/db/billing"
+import { useBillingRedirect } from "@/lib/use-billing-redirect"
 import { FREE_COLLECTION_LIMIT, FREE_ITEM_LIMIT } from "@/lib/usage-limits"
 import { PLAN_PRICING } from "@/lib/plan-pricing"
 import { cn } from "@/lib/utils"
@@ -66,20 +64,7 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
 }
 
 export function BillingSection({ status }: { status: BillingStatus }) {
-  const [pending, startTransition] = useTransition()
-
-  // The portal action returns a Stripe-hosted URL rather than redirecting, so
-  // the navigation happens here — and it's external, so a full page load.
-  function go(run: () => Promise<BillingSessionResult>) {
-    startTransition(async () => {
-      const result = await run()
-      if (result.success) {
-        window.location.href = result.data.url
-      } else {
-        toast.error(result.error)
-      }
-    })
-  }
+  const { pending, go } = useBillingRedirect()
 
   const renewsOn = formatDate(status.stripeCurrentPeriodEnd)
 

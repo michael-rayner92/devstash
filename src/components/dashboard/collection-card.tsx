@@ -1,8 +1,9 @@
 "use client"
 
-import type { CSSProperties, MouseEvent } from "react"
+import type { CSSProperties } from "react"
 import Link from "next/link"
-import { Star, File } from "lucide-react"
+import { File } from "lucide-react"
+import { FavoriteStarButton } from "@/components/ui/favorite-star-button"
 import { iconMap } from "@/lib/icon-map"
 import { relativeTime } from "@/lib/relative-time"
 import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
@@ -22,11 +23,6 @@ export function CollectionCard({ collection }: { collection: CollectionWithStats
     collection.isFavorite,
     toggleCollectionFavorite
   )
-
-  function handleFavoriteClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-    toggle()
-  }
 
   return (
     /* The card is navigated by a real <Link> on the title, stretched over the
@@ -65,20 +61,12 @@ export function CollectionCard({ collection }: { collection: CollectionWithStats
                 })}
               </div>
             )}
-            <button
-              type="button"
-              onClick={handleFavoriteClick}
-              disabled={isPending}
-              aria-pressed={isFavorite}
-              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-              className={cn(
-                // p-1.5 lifts the hit area to 28x28; the icon stays 16x16.
-                "rounded-md p-1.5 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground/60"
-              )}
-            >
-              <Star className={cn("h-4 w-4", isFavorite && "fill-yellow-400 text-yellow-400")} />
-            </button>
+            <FavoriteStarButton
+              isFavorite={isFavorite}
+              isPending={isPending}
+              onToggle={toggle}
+              size="md"
+            />
             <CollectionCardMenu
               collection={{
                 id: collection.id,

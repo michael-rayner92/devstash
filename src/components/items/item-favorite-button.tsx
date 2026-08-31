@@ -1,17 +1,13 @@
 "use client"
 
-import type { KeyboardEvent, MouseEvent } from "react"
-import { Star } from "lucide-react"
+import { FavoriteStarButton } from "@/components/ui/favorite-star-button"
 import { toggleItemFavorite } from "@/actions/items"
 import { useFavoriteToggle } from "@/lib/use-favorite-toggle"
 import { cn } from "@/lib/utils"
 
 /**
- * Star toggle for item cards (ItemCard / ImageCard / FileListRow). Always
- * rendered: filled amber when favorited (full opacity), muted and revealed on
- * hover/focus otherwise — matching the cards' copy-button reveal pattern. Stops
- * click/keydown from bubbling so it never triggers the card's drawer-open
- * handler.
+ * Star toggle for item cards (ItemCard / ImageCard / FileListRow) — wires the
+ * shared `FavoriteStarButton` to the item favorite action.
  */
 export function ItemFavoriteButton({
   itemId,
@@ -28,41 +24,13 @@ export function ItemFavoriteButton({
     toggleItemFavorite
   )
 
-  function handleClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-    toggle()
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    // Keep Enter/Space from bubbling to the card (which opens the drawer); the
-    // button's own activation still fires its onClick.
-    if (event.key === "Enter" || event.key === " ") {
-      event.stopPropagation()
-    }
-  }
-
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      disabled={isPending}
-      aria-pressed={isFavorite}
-      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-      className={cn(
-        // p-1.5 lifts the 14px icon to a 26x26 hit area, over the WCAG 2.5.8
-        // 24x24 floor. The -m-1.5 keeps the visual layout unchanged.
-        "-m-1.5 rounded-md p-1.5 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-        className
-      )}
-    >
-      <Star
-        className={cn(
-          "h-3.5 w-3.5",
-          isFavorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/60"
-        )}
-      />
-    </button>
+    <FavoriteStarButton
+      isFavorite={isFavorite}
+      isPending={isPending}
+      onToggle={toggle}
+      // -m-1.5 keeps the enlarged hit area from changing the card's layout.
+      className={cn("-m-1.5", className)}
+    />
   )
 }

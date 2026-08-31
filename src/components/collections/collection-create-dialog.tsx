@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FormField } from "@/components/items/form-field"
 import { createCollection } from "@/actions/collections"
+import { useControllableOpen } from "@/lib/use-controllable-open"
 
 const EMPTY_FORM = {
   name: "",
@@ -37,21 +38,17 @@ export function CollectionCreateDialog({
   onOpenChange,
 }: CollectionCreateDialogProps) {
   const router = useRouter()
-  const [internalOpen, setInternalOpen] = useState(false)
-  const isControlled = controlledOpen !== undefined
-  const open = isControlled ? controlledOpen : internalOpen
   const [form, setForm] = useState(EMPTY_FORM)
   const [creating, setCreating] = useState(false)
 
   const canCreate = form.name.trim().length > 0 && !creating
 
-  function handleOpenChange(next: boolean) {
-    if (isControlled) onOpenChange?.(next)
-    else setInternalOpen(next)
-    if (!next) {
-      setForm(EMPTY_FORM)
-    }
-  }
+  // Discard the form on close, whichever path closed it.
+  const { open, setOpen: handleOpenChange } = useControllableOpen(
+    controlledOpen,
+    onOpenChange,
+    () => setForm(EMPTY_FORM)
+  )
 
   async function handleCreate() {
     setCreating(true)
